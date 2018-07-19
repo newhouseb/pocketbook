@@ -19,7 +19,7 @@ function publish() {
 }
 </script>
 <style>
-.medium-style #center {
+.medium-style .content {
   margin-left: auto;
   margin-right: auto;
   width: 700px;
@@ -30,66 +30,190 @@ function publish() {
   font-size: 42px;
 }
 
+.medium-style h2, h3, h4, strong {
+  font-family: helvetica, arial;
+}
+
 .medium-style p {
-  font-size: 21px;
+  font-size: 18px;
 }
 
 .medium-style .block {
-  padding-top: 20px;
-  margin-bottom: 10px;
-  padding-left: 10px;
-  border-left: 2px solid white;
+  padding: 10px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  margin: 0px;
+  border-right: 2px solid white;
+  min-height: 10px;
 }
 
 .medium-style .focused {
-  border-left: 2px solid black;
+  border-right: 2px solid black;
 }
 
 .medium-style pre {
   background-color: #f3f3f3;
   padding: 5px;
+  margin-bottom: 0px;
+  margin-top: 0px;
 }
 
-#center {
+.medium-style .output {
+  border: 1px solid #f3f3f3;
+  border-top: 0px;
+  padding: 5px;
+}
+
+.content {
   position: relative;
+  padding-top: 10px;
 }
 
 #controls {
   position: absolute;
-  left: 12px;
+  right: -170px;
   top: 0px;
-  height: 20px;
+  width: 140px;
+  padding: 0px;
+  background: #333;
+  border-radius: 3px;
 }
+
+#controls button, label {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: #ccc;
+  border-bottom: 1px solid #444;
+  font-size: 16px;
+  font-family: system-ui;
+  padding: 10px;
+  margin: 0px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.control {
+  position: relative;
+}
+
+#controls button:hover, label:hover {
+  color: white;
+  background: #444;
+}
+
+body {
+  margin: 0px;
+  padding: 0px;
+}
+
+.control input {
+  text-align: right; 
+  position: float;
+  float: right;
+}
+
+#topbar {
+  border-bottom: 1px solid #dedede;
+  padding: 10px;
+}
+
+button {
+  padding: 5px;
+  font-size: 16px;
+  border: 0px;
+  background-color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  color: blue;
+}
+
+select {
+  border: 0;
+  font-size: 16px;
+  background-color: #282828;
+  -webkit-appearance: none;
+  color: #ccc;
+  width: 100%;
+  border-bottom: 1px solid #444;
+  padding: 10px;
+  margin: 0px;
+  cursor: pointer;
+}
+
+select:hover {
+  background: #444;
+  color: white;
+}
+
+input[type="checkbox"] {
+    opacity: 0;
+}
+
+label::after {
+    position: absolute;
+    top: 11px;
+    right: 10px;
+    content: "";
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    border: 1px solid #555;   
+    border-radius: 3px;
+}
+
+input[type="checkbox"]:checked + label::after  {
+    background-color: #555;
+}
+
+
+.divot {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  color: #555;
+}
+
+#credits {
+  width: 300px;
+  margin-top: 100px;
+  margin-left: auto;
+  margin-right: auto;
+  color: #ccc;
+  text-align: center;
+}
+
 </style>
 </head>
-<body id="notebook1" class="medium-style">
-<button onclick="save()">Save</button>
-<button onclick="save()">Show/Hide Console</button>
-<div id="center">
-  <div id="controls">
+<body class="medium-style">
+<div id="topbar">
+  <button onclick="save()">Show/Hide Console</button>
+  &nbsp;
+  <button onclick="save()">Switch to Publish View</button>
+</div>
+<div id="controls">
     <button onclick="run()">Run</button>
-    <button onclick="addAbove()">addAbove</button>
-    <button onclick="addBelow()">addBelow</button>
-    <button onclick="remove()">remove</button>
-    <select onchange="chooseLanguage(event)" id="activelang">
-      <option value="md">Markdown</option>
-      <option value="js">Javascript</option>
-      <option value="cljs">ClojureScript</option>
-    </select>
-    <select onchange="chooseVisibility(event)" id="visibility">
-      <option value="source">Display Source</option>
-      <option value="output">Display Output</option>
-      <option value="both">Display Both</option>
-      <option value="none">Display None</option>
-    </select>
-    <select onchange="chooseAutorun()" id="autorun">
-      <option value="true">Run On-Demand</option>
-      <option value="false">Run On-Load</option>
-    </select>
-  </div>
-
+    <button onclick="addAbove()">Add Above</button>
+    <button onclick="addBelow()">Add Below</button>
+    <button onclick="remove()">Remove</button>
+    <div class="control"><input id="source-visibility" onclick="chooseSourceVisibility(event)" type="checkbox" /><label for="source-visibility">Show Source </label></div>
+    <div class="control"><input id="result-visibility" onclick="chooseResultVisibility(event)" type="checkbox" /><label for="result-visibility">Show Result </label></div>
+    <div class="control"><input id="autorun" type="checkbox" /><label for="autorun">Autorun </label></div>
+    <div style="position: relative;">
+      <div class="divot">&#x25BC;</div>
+      <select onchange="chooseLanguage(event)" id="activelang">
+        <option value="md">Markdown</option>
+        <option value="js">Javascript</option>
+        <option value="deps">Deps</option>
+      </select>
+    </div>
+</div>
+<div id="notebook1" class="content">
   <div data-lang="md" data-visibility="output" data-autorun="false" class="block focused">
-    <pre contenteditable="true">
+    <pre class="source" contenteditable="true">
 # Hello World
 
 Here is some exposition</pre>
@@ -97,9 +221,7 @@ Here is some exposition</pre>
       <h1>Hello World</h1>
       <p>Here is some exposition</p>
     </div>
-  </div>
-
-  <div data-lang="js" data-visibility="source" data-autorun="false" class="block focused">
+  </div><div data-lang="js" data-visibility="source" data-autorun="false" class="block focused">
     <pre class="source" contenteditable="true"><code>
 console.log("Hello World");
 
@@ -120,61 +242,102 @@ bar = {
     Output
     </div>
   </div>
-  <div id="next-block" class="block">
-    <button>Add Block</button>
-  </div>
+</div>
+<div id="credits">
+  Made with PocketBook.
 </div>
 </body>
 
 <script>
 var converter = new showdown.Converter();
 var languages = {
-  md: function(src) {
-    return converter.makeHtml(src);
+  md: {
+    eval: function(src) { return converter.makeHtml(src); },
+    name: "Markdown"
   },
-  js: function(src) {
-    var result = eval(src);
-    // TODO: Wrap render to spit into the same element
-    if (result.render) return result.render();
-    return result;
+  js: {
+    eval: function(src) {
+      return eval(src);
+    },
+    name: "Javascript"
   },
-  cljs: function(src) {
-    // For some reason I can't get the cljs.user namespace to autocreate (when not usign replumb)
-    // cljs.user = cljs.user || {};
-    // return cljs_eval.core.cljs_evaluate("(do " + src + ")", function(r) { window.result = r["arr"][7]; });
-    return new Promise(function(resolve, reject) {
-      replumb.core.read_eval_call(repl_options, 
-      function(r) { 
-        resolve(r.arr[7])
-      }, "(do " + src + ")")
-    });
-  }
+  deps: {
+    eval: function(src) {
+      var deps = src.split('\n'); 
+      for (var i = 0; i < deps.length; i++) {
+        var s = document.createElement('script');
+        s.src = deps[i];
+        document.body.append(s);
+      }
+    },
+    name: "Dependencies"
+  },
 };
 
-// macros.core$macros=> (ns macros.core$macros) (defmacro hello [x] (prn &form) `(inc ~x))
-// macros.core$macros=> (macros.core/hello 1)
+function updateLanguages() { 
+  var lang = document.getElementById("activelang");
+  var currentlang = lang.value;
+
+  while (lang.firstChild) lang.removeChild(lang.firstChild);
+  Object.keys(languages).forEach(function(key) {
+    var choice = document.createElement('option');
+    choice.value = key;
+    choice.innerHTML = languages[key].name;
+    lang.appendChild(choice);
+  });
+
+  lang.value = currentlang;
+}
 
 function updateVisibility(block) {
   // Could do this with CSS but don't want to fiddle with className splicing rn
   var src = block.children[0];
   var output = block.children[1];
-  if (block.dataset.visibility == 'none') { src.style.display = 'none'; output.style.display = 'none'; }
-  if (block.dataset.visibility == 'source') { src.style.display = ''; output.style.display = 'none'; }
-  if (block.dataset.visibility == 'output') { src.style.display = 'none'; output.style.display = ''; }
-  if (block.dataset.visibility == 'both') { src.style.display = ''; output.style.display = ''; }
+  if (block.dataset.sourceVisibility == 'hidden') { 
+    src.style.display = 'none';
+  } else {
+    src.style.display = '';
+  }
+  if (block.dataset.resultVisibility == 'hidden') { 
+    output.style.display = 'none';
+  } else {
+    output.style.display = '';
+  }
 }
+
+var lastBlock = null;
+
+document.getElementById('controls').addEventListener('mouseover', function(event) {
+        lastBlock.className = 'block focused';
+        document.getElementById('controls').style.display = ''; 
+});
+
+document.getElementById('controls').addEventListener('mouseout', function(event) {
+        document.getElementById('controls').style.display = 'none'; 
+        document.getElementsByClassName('focused')[0].className = 'block';
+});
 
 function initBlock(block) {
   updateVisibility(block);
   block.addEventListener('mouseover', function(event) {
         // TODO: Move Focus
-        document.getElementsByClassName('focused')[0].className = 'block';
+        if (document.getElementsByClassName('focused').length)
+          document.getElementsByClassName('focused')[0].className = 'block';
         block.className = 'block focused';
-        document.getElementById('controls').style.top = block.offsetTop + "px";
+        document.getElementById('controls').style.top = block.parentNode.offsetTop + block.offsetTop + "px";
+        document.getElementById('controls').style.left = block.parentNode.offsetLeft - 140 + "px";
 
-        document.getElementById('visibility').value = block.dataset.visibility;
         document.getElementById('activelang').value = block.dataset.lang;
-        document.getElementById('autorun').value = block.dataset.autorun;
+        document.getElementById('source-visibility').checked = block.dataset.sourceVisibility != "hidden";
+        document.getElementById('result-visibility').checked = block.dataset.resultVisibility != "hidden";
+        document.getElementById('controls').style.display = ''; 
+  });
+
+  block.addEventListener('mouseout', function(event) {
+        lastBlock = document.getElementsByClassName('focused')[0];
+        lastBlock.className = 'block';
+
+        document.getElementById('controls').style.display = 'none'; 
   });
 }
 
@@ -184,6 +347,8 @@ function init() {
   for (var i = 0; i < blocks.length; i++) {
     initBlock(blocks[i]);
   }
+
+  document.title = "PocketBook: " + document.getElementsByTagName('h1')[0].innerHTML;
 }
 
 // Execute the currently selected block
@@ -194,14 +359,24 @@ function run() {
     }
   };
   var block = document.getElementsByClassName('focused')[0];
-  Promise.resolve(languages[block.dataset.lang](block.children[0].innerText)).then(function(result) {
-    block.children[1].innerHTML = result;
+  Promise.resolve(languages[block.dataset.lang].eval(block.children[0].innerText)).then(function(result) {
+    if (result.render) {
+      block.children[1].innerHTML = result.render();
+    } else {
+      block.children[1].innerHTML = result;
+    }
   });
 }
 
-function chooseVisibility(event) {
+function chooseSourceVisibility(event) {
   var block = document.getElementsByClassName('focused')[0];
-  block.dataset.visibility = event.target.value;
+  block.dataset.sourceVisibility = event.target.checked ? "visible" : "hidden";
+  updateVisibility(block);
+}
+
+function chooseResultVisibility(event) {
+  var block = document.getElementsByClassName('focused')[0];
+  block.dataset.resultVisibility = event.target.checked ? "visible" : "hidden";
   updateVisibility(block);
 }
 
@@ -213,16 +388,19 @@ function chooseLanguage(event) {
 
 // Load any saved, more up to date, copies of this notebook
 // Note: Need Disable Local File Restructions in the Developer Menu in Safari for this to work
-var savedCopy = window.localStorage.getItem(document.body.id);
-if (savedCopy && savedCopy != document.body.innerHTML) {
-  document.body.innerHTML = savedCopy;
-  init();
+var content = document.getElementsByClassName('content')[0];
+var savedCopy = window.localStorage.getItem(content.id);
+if (savedCopy && savedCopy != content.innerHTML) {
+  document.getElementsByClassName('content')[0].innerHTML = savedCopy;
+  console.log("wtf");
 } 
+init();
 
 // Periodically persist the current notebook to localstorage
 function autosave() {
   console.log("Autosaving");
-  window.localStorage.setItem(document.body.id, document.body.innerHTML);
+  var content = document.getElementsByClassName('content')[0];
+  window.localStorage.setItem(content.id, content.innerHTML);
   setTimeout(autosave, 1000);
 }
 autosave();
@@ -231,29 +409,26 @@ autosave();
 function addBelow() {
   var block = document.createElement("div");
   block.dataset.lang = "md";
-  block.dataset.visibility = "both";
+  block.dataset.sourceVisibility = "visible";
+  block.dataset.resultVisibility = "visible";
   block.dataset.autorun = "false";
   block.className = "block";
 
   var source = document.createElement("pre");
+  source.className = "source";
   source.contentEditable = "true";
 
   var output = document.createElement("div");
+  output.className = "output";
 
   block.appendChild(source);
   block.appendChild(output);
+  initBlock(block);
 
-  document.getElementById('center').appendChild(block);
+  var focused = document.getElementsByClassName('focused')[0];
+  focused.parentNode.insertBefore(block, focused.nextSibling);
 }
 
-</script>
-
-<!-- <script src="https://s3.amazonaws.com/bencubator.com/lib/cljs_eval.js"></script> -->
-<!-- <script src="http://localhost:8000/out/main.js"></script>-->
-<script src="http://clojurescript.io/main.js"></script>
-<script>
-// Seeing if this is somehow persistent...
-var repl_options = replumb.core.options(replumb.repl.read_string(null, ":browser"), []);
 </script>
 
 <link rel="stylesheet"
@@ -262,13 +437,8 @@ var repl_options = replumb.core.options(replumb.repl.read_string(null, ":browser
 <script>
   var blocks = document.getElementsByClassName("source");
   for (var i = 0; i < blocks.length; i++) {
+    console.log("Highlighting ", i);
     hljs.highlightBlock(blocks[i]);
   }
 </script>
-
-<!--
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
-<script>hljs.initHighlightingOnLoad();</script>-->
-
 </html>
