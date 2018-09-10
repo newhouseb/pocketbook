@@ -119,6 +119,16 @@ body {
   padding: 10px;
 }
 
+@keyframes redfade {
+    from {background-color: red;}
+    to {background-color: transparent;}
+}
+
+.blink {
+  animation-name: redfade;
+  animation-duration: 0.5s;
+}
+
 button {
   padding: 5px;
   font-size: 16px;
@@ -190,9 +200,13 @@ input[type="checkbox"]:checked + label::after  {
 </head>
 <body class="medium-style">
 <div id="topbar">
-  <button onclick="save()">Show/Hide Console</button>
+  <span id="status">Up to Date</span>
   &nbsp;
-  <button onclick="save()">Switch to Publish View</button>
+  <button id="saveToGithubButton" onclick="saveToGithub()">Save to Github Gist</button>
+  &nbsp;
+  <button id="saveToDownloadsButton" onclick="saveToDownloads()">Save to Downloads</button>
+  &nbsp;
+  <button id="revertButton" onclick="revert()">Discard Changes</button>
 </div>
 <div id="controls">
     <button onclick="run()">Run</button>
@@ -201,7 +215,7 @@ input[type="checkbox"]:checked + label::after  {
     <button onclick="remove()">Remove</button>
     <div class="control"><input id="source-visibility" onclick="chooseSourceVisibility(event)" type="checkbox" /><label for="source-visibility">Show Source </label></div>
     <div class="control"><input id="result-visibility" onclick="chooseResultVisibility(event)" type="checkbox" /><label for="result-visibility">Show Result </label></div>
-    <div class="control"><input id="autorun" type="checkbox" /><label for="autorun">Autorun </label></div>
+    <div class="control"><input id="autorun" onclick="chooseAutorun(event)" type="checkbox" /><label for="autorun">Autorun </label></div>
     <div style="position: relative;">
       <div class="divot">&#x25BC;</div>
       <select onchange="chooseLanguage(event)" id="activelang">
@@ -212,6 +226,7 @@ input[type="checkbox"]:checked + label::after  {
     </div>
 </div>
 <div id="notebook1" class="content">
+  <div id="metadata" style="display: none;"></div>
   <div data-lang="md" data-visibility="output" data-autorun="false" class="block focused">
     <pre class="source" contenteditable="true">
 # Hello World
@@ -264,11 +279,18 @@ var languages = {
   deps: {
     eval: function(src) {
       var deps = src.split('\n'); 
+      var promises = [];
       for (var i = 0; i < deps.length; i++) {
-        var s = document.createElement('script');
-        s.src = deps[i];
-        document.body.append(s);
+        if (deps[i] == "") continue;
+        promises.push(new Promise((function(dep) { return function(resolve, reject) {
+          var s = document.createElement('script');
+          s.src = dep;
+          s.onload = resolve
+          s.onerror = reject
+          document.body.append(s);
+        }})(deps[i])));
       }
+      return Promise.all(promises)
     },
     name: "Dependencies"
   },
@@ -330,6 +352,7 @@ function initBlock(block) {
         document.getElementById('activelang').value = block.dataset.lang;
         document.getElementById('source-visibility').checked = block.dataset.sourceVisibility != "hidden";
         document.getElementById('result-visibility').checked = block.dataset.resultVisibility != "hidden";
+        document.getElementById('autorun').checked = block.dataset.autorun == "true";
         document.getElementById('controls').style.display = ''; 
   });
 
@@ -343,29 +366,62 @@ function initBlock(block) {
 
 // Add the right event listeners to shift focus around as you move
 function init() {
+  var toAutorun = [];
+
   var blocks = document.getElementsByClassName("block");
   for (var i = 0; i < blocks.length; i++) {
+    if (blocks[i].dataset.autorun == 'true') toAutorun.push(blocks[i]);
     initBlock(blocks[i]);
   }
 
   document.title = "PocketBook: " + document.getElementsByTagName('h1')[0].innerHTML;
+
+  //Queue up all the autorun cells
+  var do_block = function(blocks) {
+    if (blocks.length > 0) {
+      run_block(blocks[0], function() {
+        do_block(blocks.slice(1));
+      });
+    } 
+  }
+  do_block(toAutorun);
 }
 
 // Execute the currently selected block
-function run() {
+function run(cb) {
+  var block = document.getElementsByClassName('focused')[0];
+  run_block(block, cb);
+}
+
+function run_block(block, cb) {
   var console = {
     log: function(e) { 
       alert(e); 
     }
   };
-  var block = document.getElementsByClassName('focused')[0];
-  Promise.resolve(languages[block.dataset.lang].eval(block.children[0].innerText)).then(function(result) {
-    if (result.render) {
-      block.children[1].innerHTML = result.render();
-    } else {
-      block.children[1].innerHTML = result;
-    }
-  });
+  var handleError = function(error) {
+    console.log("Got error running block", error);
+    block.children[1].innerHTML = error;
+  }
+  try {
+    Promise.resolve(languages[block.dataset.lang].eval(block.children[0].innerText)).then(function(result) {
+      if (result && result.render) {
+        block.children[1].innerHTML = result.render();
+      } else {
+        block.children[1].innerHTML = result;
+      }
+      block.lastElementChild.className = (block.lastElementChild.className || "").replace(' blink', '');
+      setTimeout(function() {
+        block.lastElementChild.className += " blink";
+        setTimeout(function() {
+          block.lastElementChild.className = (block.lastElementChild.className || "").replace(' blink', '');
+        }, 500);
+      }, 0);
+      if (cb) cb();
+    }).catch(handleError);
+  } catch(error) {
+    handleError(error);
+  }
 }
 
 function chooseSourceVisibility(event) {
@@ -380,6 +436,11 @@ function chooseResultVisibility(event) {
   updateVisibility(block);
 }
 
+function chooseAutorun(event) {
+  var block = document.getElementsByClassName('focused')[0];
+  block.dataset.autorun = event.target.checked ? "true" : "false";
+}
+
 function chooseLanguage(event) {
   var block = document.getElementsByClassName('focused')[0];
   block.dataset.lang = event.target.value;
@@ -390,10 +451,15 @@ function chooseLanguage(event) {
 // Note: Need Disable Local File Restructions in the Developer Menu in Safari for this to work
 var content = document.getElementsByClassName('content')[0];
 var savedCopy = window.localStorage.getItem(content.id);
-if (savedCopy && savedCopy != content.innerHTML) {
+if (savedCopy && (savedCopy != content.innerHTML)) {
+  console.log("Same?", localStorage.notebook1.length, content.innerHTML.length)
   document.getElementsByClassName('content')[0].innerHTML = savedCopy;
-  console.log("wtf");
-} 
+  document.getElementById('status').innerHTML = 'Autosaved to Browser Local Storage';
+} else {
+  console.log("Original?", content.innerHTML.length)
+  document.getElementById('revertButton').style.display = 'none';
+  document.getElementById('saveToDownloadsButton').style.display = 'none';
+}
 init();
 
 // Periodically persist the current notebook to localstorage
@@ -404,6 +470,50 @@ function autosave() {
   setTimeout(autosave, 1000);
 }
 autosave();
+
+function revert() {
+  window.localStorage.removeItem(content.id);
+  location.reload();
+}
+
+function saveToGithub() {
+  var metadata = document.getElementById('metadata').dataset;
+  if (metadata.gist) {
+    
+  } else {
+    // Createa new gist and persist it
+    var toPost = {
+      "description": "Hello World Examples",
+      "public": true,
+      "files": {
+        "index.html": {
+          "content": document.getElementsByClassName('content')[0].innerHTML
+        }
+      }
+    };
+    var xhttp = new XMLHttpRequest();
+    xhttp.open('POST', 'https://api.github.com/gists?access_token=')
+    xhttp.setRequestHeader('Content-Type', 'application/json');
+    xhttp.addEventListener('load', function(e) {
+      if (xhttp.readyState == 4) {
+        var response = JSON.parse(xhttp.response);
+        if (response.id) {
+          metadata.gist = response.id;
+          var content = document.getElementsByClassName('content')[0];
+          window.localStorage.setItem(content.id, content.innerHTML);
+        }
+      }
+    });
+    xhttp.send(JSON.stringify(toPost));
+  }
+}
+
+// Override save, since the browser default will save the unmodified HTML :(
+document.onkeydown = function(e) {
+  if ((e.metaKey || e.ctrlKey) && e.keyCode === 83) {
+    e.preventDefault();
+  }
+}
 
 //Insert a new block below the current cell
 function addBelow() {
@@ -438,6 +548,7 @@ function addBelow() {
   var blocks = document.getElementsByClassName("source");
   for (var i = 0; i < blocks.length; i++) {
     console.log("Highlighting ", i);
+    blocks[i].innerHTML = blocks[i].innerText;
     hljs.highlightBlock(blocks[i]);
   }
 </script>
