@@ -117,6 +117,8 @@ body {
 #topbar {
   border-bottom: 1px solid #dedede;
   padding: 10px;
+  height: 40px;
+  line-height: 40px;
 }
 
 @keyframes redfade {
@@ -139,6 +141,20 @@ button {
 
 button:hover {
   color: blue;
+}
+
+#topbar button {
+  float: right;
+  border-radius: 5px;
+  padding: 10px;
+  background-color: #333;
+  color: #ccc;
+  margin-left: 10px;
+}
+
+#topbar button:hover {
+  background-color: #444;
+  color: #fff;
 }
 
 select {
@@ -196,17 +212,22 @@ input[type="checkbox"]:checked + label::after  {
   text-align: center;
 }
 
+#status {
+  font-family: system-ui;
+}
+
 </style>
 </head>
 <body class="medium-style">
 <div id="topbar">
   <span id="status">Up to Date</span>
   &nbsp;
+  &nbsp;
   <button id="saveToGithubButton" onclick="saveToGithub()">Save to Github Gist</button>
+  <!-- &nbsp;
+  <button id="saveToDownloadsButton" onclick="saveToDownloads()">Save to Downloads</button> -->
   &nbsp;
-  <button id="saveToDownloadsButton" onclick="saveToDownloads()">Save to Downloads</button>
-  &nbsp;
-  <button id="revertButton" onclick="revert()">Discard Changes</button>
+  <button id="revertButton" onclick="revert()">Revert to File</button>
 </div>
 <div id="controls">
     <button onclick="run()">Run</button>
@@ -447,20 +468,44 @@ function chooseLanguage(event) {
   updateVisibility(block);
 }
 
-// Load any saved, more up to date, copies of this notebook
-// Note: Need Disable Local File Restructions in the Developer Menu in Safari for this to work
-var content = document.getElementsByClassName('content')[0];
-var savedCopy = window.localStorage.getItem(content.id);
-if (savedCopy && (savedCopy != content.innerHTML)) {
-  console.log("Same?", localStorage.notebook1.length, content.innerHTML.length)
-  document.getElementsByClassName('content')[0].innerHTML = savedCopy;
-  document.getElementById('status').innerHTML = 'Autosaved to Browser Local Storage';
+// If this is a redirect from the Readme of a gist read the gist ID from the referer
+if (window.location.hash == '#gistredirect') {
+  var gistid = document.referrer.match(/gist.github.com\/[^\/]+\/([a-z0-9]+)/)[1];
+  window.location = 'https://gist-' + gistid + '.pocketbook.software'
+
+// Use the wildcarded domain to find what gist to pull (this ensures we're sandboxing each gist to a separate domain)
+} else if (window.location.href.match(/gist-[a-z0-9]+\.pocketbook\.software/)) {
+  var gistid = window.location.href.match(/gist-([a-z0-9]+)\.pocketbook\.software/)[1];
+  var xhttp = new XMLHttpRequest();
+  xhttp.open('GET', 'https://api.github.com/gists/' + gistid)
+  xhttp.addEventListener('load', function(e) {
+    if (xhttp.readyState == 4 && xhttp.status == 200) {
+      var index = JSON.parse(xhttp.response)["files"]["index.html"];
+      if (index["truncated"] === false) {
+         document.getElementsByClassName('content')[0].innerHTML = index["content"];
+         // We might not have persisted the gist id self-referentially yet
+         document.getElementById("metadata").dataset.gist = gistid;
+         init();
+      } else {
+        console.log("Truncated gists not yet supported");
+      }
+    }
+  });
+  xhttp.send();
 } else {
-  console.log("Original?", content.innerHTML.length)
-  document.getElementById('revertButton').style.display = 'none';
-  document.getElementById('saveToDownloadsButton').style.display = 'none';
+  // Load any saved, more up to date, copies of this notebook
+  // Note: Need Disable Local File Restructions in the Developer Menu in Safari for this to work with file://
+  var content = document.getElementsByClassName('content')[0];
+  var savedCopy = window.localStorage.getItem(content.id);
+  if (savedCopy && (savedCopy != content.innerHTML)) {
+    document.getElementsByClassName('content')[0].innerHTML = savedCopy;
+    document.getElementById('status').innerHTML = 'Autosaved to Browser Local Storage';
+  } else {
+    document.getElementById('revertButton').style.display = 'none';
+    document.getElementById('saveToDownloadsButton').style.display = 'none';
+  }
+  init();
 }
-init();
 
 // Periodically persist the current notebook to localstorage
 function autosave() {
@@ -477,14 +522,19 @@ function revert() {
 }
 
 function saveToGithub() {
+  if (!window.localStorage.getItem('githubkey')) {
+    var key = prompt("Please enter a github api key");
+    if (!key || key == "") {
+      alert('Saving failed');
+      return;
+    }
+    window.localStorage.setItem('githubkey', key);
+  }
+  var key = window.localStorage.getItem('githubkey')
+
   var metadata = document.getElementById('metadata').dataset;
   if (metadata.gist) {
-    
-  } else {
-    // Createa new gist and persist it
-    var toPost = {
-      "description": "Hello World Examples",
-      "public": true,
+    var toPatch = {
       "files": {
         "index.html": {
           "content": document.getElementsByClassName('content')[0].innerHTML
@@ -492,7 +542,30 @@ function saveToGithub() {
       }
     };
     var xhttp = new XMLHttpRequest();
-    xhttp.open('POST', 'https://api.github.com/gists?access_token=')
+    xhttp.open('PATCH', 'https://api.github.com/gists/' + metadata.gist + '?access_token=' + key)
+    xhttp.setRequestHeader('Content-Type', 'application/json');
+    xhttp.addEventListener('load', function(e) {
+      if (xhttp.readyState == 4 && xhttp.status == 200) {
+        document.getElementById('status').innerHTML = 'Saved to Github Gist'
+      }
+    });
+    xhttp.send(JSON.stringify(toPatch));
+  } else {
+    // Createa new gist and persist it
+    var toPost = {
+      "description": "Hello World Examples",
+      "public": true,
+      "files": {
+        "readme.md": {
+          content: "[Click here to view this pocketbook](https://pocketbook.software/#gistredirect)"
+        },
+        "index.html": {
+          "content": document.getElementsByClassName('content')[0].innerHTML
+        }
+      }
+    };
+    var xhttp = new XMLHttpRequest();
+    xhttp.open('POST', 'https://api.github.com/gists?access_token=' + key)
     xhttp.setRequestHeader('Content-Type', 'application/json');
     xhttp.addEventListener('load', function(e) {
       if (xhttp.readyState == 4) {
