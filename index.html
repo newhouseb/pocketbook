@@ -223,6 +223,9 @@ input[type="checkbox"]:checked + label::after  {
   <span id="status">Up to Date</span>
   &nbsp;
   &nbsp;
+  <span id="source"></span>
+  &nbsp;
+  &nbsp;
   <button id="saveToGithubButton" onclick="saveToGithub()">Save to Github Gist</button>
   <!-- &nbsp;
   <button id="saveToDownloadsButton" onclick="saveToDownloads()">Save to Downloads</button> -->
@@ -397,6 +400,11 @@ function init() {
 
   document.title = "PocketBook: " + document.getElementsByTagName('h1')[0].innerHTML;
 
+  var metadata = document.getElementById('metadata').dataset;
+  if (metadata.gist) {
+    document.getElementById('source').innerHTML = '<a href="http://gist.github.com/' + metadata.gist + '">Source Gist</a>';
+  }
+
   //Queue up all the autorun cells
   var do_block = function(blocks) {
     if (blocks.length > 0) {
@@ -468,6 +476,22 @@ function chooseLanguage(event) {
   updateVisibility(block);
 }
 
+var GIST_CACHE = {
+
+};
+
+// Periodically persist the current notebook to localstorage
+function autosave() {
+  console.log("Autosaving");
+  var metadata = document.getElementById('metadata').dataset;
+  var content = document.getElementsByClassName('content')[0];
+  var id = metadata.gist ? metadata.gist : content.id;
+  if (content.innerHTML != GIST_CACHE[metadata.gist]) {
+    window.localStorage.setItem(id, content.innerHTML);
+  }
+  setTimeout(autosave, 1000);
+}
+
 // If this is a redirect from the Readme of a gist read the gist ID from the referer
 if (window.location.hash == '#gistredirect') {
   var gistid = document.referrer.match(/gist.github.com\/[^\/]+\/([a-z0-9]+)/)[1];
@@ -477,7 +501,7 @@ if (window.location.hash == '#gistredirect') {
 } else if (window.location.href.match(/gist-[a-z0-9]+\.pocketbook\.software/)) {
   var gistid = window.location.href.match(/gist-([a-z0-9]+)\.pocketbook\.software/)[1];
   var xhttp = new XMLHttpRequest();
-  xhttp.open('GET', 'https://api.github.com/gists/' + gistid)
+  xhttp.open('GET', 'https://api.github.com/gists/' + gistid + "?seed=" + Math.random())
   xhttp.addEventListener('load', function(e) {
     if (xhttp.readyState == 4 && xhttp.status == 200) {
       var index = JSON.parse(xhttp.response)["files"]["index.html"];
@@ -485,7 +509,10 @@ if (window.location.hash == '#gistredirect') {
          document.getElementsByClassName('content')[0].innerHTML = index["content"];
          // We might not have persisted the gist id self-referentially yet
          document.getElementById("metadata").dataset.gist = gistid;
+         GIST_CACHE[gistid] = index["content"];
+
          init();
+         autosave();
       } else {
         console.log("Truncated gists not yet supported");
       }
@@ -502,19 +529,11 @@ if (window.location.hash == '#gistredirect') {
     document.getElementById('status').innerHTML = 'Autosaved to Browser Local Storage';
   } else {
     document.getElementById('revertButton').style.display = 'none';
-    document.getElementById('saveToDownloadsButton').style.display = 'none';
+    // document.getElementById('saveToDownloadsButton').style.display = 'none';
   }
   init();
+  autosave();
 }
-
-// Periodically persist the current notebook to localstorage
-function autosave() {
-  console.log("Autosaving");
-  var content = document.getElementsByClassName('content')[0];
-  window.localStorage.setItem(content.id, content.innerHTML);
-  setTimeout(autosave, 1000);
-}
-autosave();
 
 function revert() {
   window.localStorage.removeItem(content.id);
@@ -531,13 +550,14 @@ function saveToGithub() {
     window.localStorage.setItem('githubkey', key);
   }
   var key = window.localStorage.getItem('githubkey')
+  var content = document.getElementsByClassName('content')[0].innerHTML;
 
   var metadata = document.getElementById('metadata').dataset;
   if (metadata.gist) {
     var toPatch = {
       "files": {
         "index.html": {
-          "content": document.getElementsByClassName('content')[0].innerHTML
+          "content": content
         }
       }
     };
@@ -547,6 +567,10 @@ function saveToGithub() {
     xhttp.addEventListener('load', function(e) {
       if (xhttp.readyState == 4 && xhttp.status == 200) {
         document.getElementById('status').innerHTML = 'Saved to Github Gist'
+
+        // Clear ut any temporary state and save cached state
+        window.localStorage.removeItem(metadata.gist);
+        GIST_CACHE[metadata.gist] = content;
       }
     });
     xhttp.send(JSON.stringify(toPatch));
@@ -572,8 +596,9 @@ function saveToGithub() {
         var response = JSON.parse(xhttp.response);
         if (response.id) {
           metadata.gist = response.id;
-          var content = document.getElementsByClassName('content')[0];
-          window.localStorage.setItem(content.id, content.innerHTML);
+
+          GIST_CACHE[metadata.gist] = content;
+          window.localStorage.removeItem(metadata.gist);
         }
       }
     });
@@ -581,9 +606,40 @@ function saveToGithub() {
   }
 }
 
+function makeid() {
+  var text = "";
+  var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (var i = 0; i < 5; i++)
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  return text;
+}
+
+function downloadCopy() {
+    // Temporarily remove/regenerate the id and gist
+    var metadata = document.getElementById('metadata').dataset;
+    var oldgist = metadata.gist;
+    if (metadata.gist != undefined) {
+      delete metadata.gist;
+    }
+    var content = document.getElementsByClassName('content')[0];
+    var oldid = content.id;
+    content.id = makeid();
+
+    // Save things to disk
+    var link = document.createElement("a");
+    link.setAttribute("href", 'data:text/html,' + encodeURI(document.documentElement.outerHTML));
+    link.setAttribute("download", 'pocketbook.html');
+    link.click();
+
+    // Put the IDs back
+    metadata.gist = oldgist;
+    content.id = oldid
+}
+
 // Override save, since the browser default will save the unmodified HTML :(
 document.onkeydown = function(e) {
   if ((e.metaKey || e.ctrlKey) && e.keyCode === 83) {
+    downloadCopy();
     e.preventDefault();
   }
 }
