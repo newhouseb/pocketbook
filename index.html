@@ -49,6 +49,10 @@
   padding: 5px;
 }
 
+.hide-source .source {
+  display: none;
+}
+
 .content {
   position: relative;
   padding-top: 10px;
@@ -323,46 +327,10 @@ bar = {
 
       this.StorageManager = new PocketBook.StorageManager(this);
       this.StorageManager.initialize();
+
+      this.HotKeyManager = new PocketBook.HotKeyManager(this);
     }
   };
-
-  function downloadCopy() {
-      function makeid() {
-        var text = "";
-        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        for (var i = 0; i < 5; i++)
-          text += possible.charAt(Math.floor(Math.random() * possible.length));
-        return text;
-      }
-
-      // Temporarily remove/regenerate the id and gist
-      var metadata = document.getElementById('metadata').dataset;
-      var oldgist = metadata.gist;
-      if (metadata.gist != undefined) {
-        delete metadata.gist;
-      }
-      var content = document.getElementsByClassName('content')[0];
-      var oldid = content.id;
-      content.id = makeid();
-
-      // Save things to disk
-      var link = document.createElement("a");
-      link.setAttribute("href", 'data:text/html,' + encodeURI(document.documentElement.outerHTML));
-      link.setAttribute("download", 'pocketbook.html');
-      link.click();
-
-      // Put the IDs back
-      metadata.gist = oldgist;
-      content.id = oldid
-  }
-
-  // Override save, since the browser default will save the unmodified HTML :(
-  document.onkeydown = function(e) {
-    if ((e.metaKey || e.ctrlKey) && e.keyCode === 83) {
-      downloadCopy();
-      e.preventDefault();
-    }
-  }
 
   PocketBook.Storage = {};
   var LocalStorageBackingStore = PocketBook.Storage.LocalStorageBackingStore = class LocalStorageBackingStore {
@@ -438,7 +406,7 @@ bar = {
               content: "[Click here to view this pocketbook](https://pocketbook.software/#gistredirect)"
             },
             "index.html": {
-              "content": document.getElementsByClassName('content')[0].innerHTML
+              "content": content.innerHTML
             }
           }
         };
@@ -483,7 +451,7 @@ bar = {
       // the metadata
       if (window.location.href.match(/gist-[a-z0-9]+\.pocketbook\.software/)) {
         var gistid = window.location.href.match(/gist-([a-z0-9]+)\.pocketbook\.software/)[1];
-        var metadata = content.getElementsByClassName('metadata')[0].dataset;
+        var metadata = this.Parent.Content.getElementsByClassName('metadata')[0].dataset;
         metadata.gist = gistid;
       }
     }
@@ -541,13 +509,28 @@ bar = {
     }
   }
   var ToggleBlockAction = PocketBook.UI.ToggleBlockAction = class ToggleBlockAction {
-    constructor(name, hotkey, execute) {
+    constructor(name, hotkey, checked, execute) {
       this.name = name;
       this.execute = execute;
+      this.checked = checked;
       this.hotkey = [hotkey, execute];
     }
-    render() {
-      // <div class="control"><input id="autorun" onclick="chooseAutorun(event)" type="checkbox" /><label for="autorun">Autorun </label></div>
+    render(block) {
+      var div = document.createElement('div');
+      div.className = 'control';
+      var input = document.createElement('input');
+      input.id = this.name;
+      input.type = "checkbox";
+      input.checked = this.checked(block);
+      input.addEventListener('click', (e) => {
+        this.execute(block, input.checked);
+      });
+      div.appendChild(input);
+      var label = document.createElement('label');
+      label.htmlFor = this.name;
+      label.innerHTML = this.name;
+      div.appendChild(label);
+      return div;
     }
   }
 
@@ -567,7 +550,7 @@ bar = {
         new StatelessBlockAction("Add Above", null, function(block) {
 
         }),
-        new StatelessBlockAction("Add Below", null, function(block) {
+        new StatelessBlockAction("Add Below", null, (block) => {
           var block = document.createElement("div");
           block.dataset.lang = "md";
           block.dataset.sourceVisibility = "visible";
@@ -584,7 +567,7 @@ bar = {
 
           block.appendChild(source);
           block.appendChild(output);
-          initBlock(block);
+          this.initializeBlock(block);
 
           var focused = document.getElementsByClassName('focused')[0];
           focused.parentNode.insertBefore(block, focused.nextSibling);
@@ -594,47 +577,66 @@ bar = {
         }),
         new ToggleBlockAction("Show Source", null, function(block) {
           return block.dataset.sourceVisibility != "hidden";
-        }, function(block) {
-
+        }, function(block, checked) {
+          block.dataset.sourceVisibility = checked ? 'visible' : 'hidden';
+          if (checked) {
+            block.classList.remove("hide-source");
+          } else {
+            block.classList.add("hide-source");
+          }
         }),
         new ToggleBlockAction("Show Result", null, function(block) {
           return block.dataset.resultVisibility != "hidden";
-        }, function(block) {
-
+        }, function(block, checked) {
+          block.dataset.resultVisibility = checked ? 'visible' : 'hidden';
+          if (checked) {
+            block.classList.remove("hide-result");
+          } else {
+            block.classList.add("hide-result");
+          }
         }),
         new ToggleBlockAction("Autorun", null, function(block) {
           return block.dataset.autorun == "true";
-        }, function(block) {
-
+        }, function(block, checked) {
+          block.dataset.autorun = checked ? 'true' : 'false';
         }),
         new (class {
-          constructor() {
+          constructor(pocketbook) {
+            this.Parent = pocketbook;
             this.name = "Choose Language";
           }
-          render() {
-            return;
-            document.getElementById('activelang').value = block.dataset.lang;
+          render(block) {
+            var div = document.createElement('div');
+            div.style.position = 'relative';
 
-            var lang = document.getElementById("activelang");
-            var currentlang = lang.value;
+            var divot = document.createElement('div');
+            divot.className = 'divot';
+            divot.innerHTML = '&#x25BC;';
+            div.appendChild(divot);
 
-            while (lang.firstChild) lang.removeChild(lang.firstChild);
-            Object.keys(languages).forEach(function(key) {
+            var select = document.createElement('select');
+            select.addEventListener('change', function(event) {
+              block.dataset.lang = event.target.value;
+            });
+            Object.keys(this.Parent.Languages).forEach((key) => {
               var choice = document.createElement('option');
               choice.value = key;
-              choice.innerHTML = languages[key].name;
-              lang.appendChild(choice);
+              choice.innerHTML = this.Parent.Languages[key].name;
+              select.appendChild(choice);
             });
-            lang.value = currentlang;
+            select.value = block.dataset.lang;
+            div.appendChild(select);
+
+            return div;
           }
-        })(),
+        })(this.Parent),
       ];
     }
 
     focusBlock(block) {
       if (document.getElementsByClassName('focused').length)
-        document.getElementsByClassName('focused')[0].className = 'block';
-      block.className = 'block focused';
+        document.getElementsByClassName('focused')[0].classList.remove('focused');
+      block.classList.add('focused')
       document.getElementById('controls').style.top = block.parentNode.offsetTop + block.offsetTop + "px";
       document.getElementById('controls').style.left = block.parentNode.offsetLeft - 140 + "px";
       document.getElementById('controls').style.display = '';
@@ -643,14 +645,14 @@ bar = {
       var controls = document.getElementById('controls');
       controls.innerHTML = '';
       for (var i = 0; i < this.Actions.length; i++) {
-        var action = this.Actions[i].render();
+        var action = this.Actions[i].render(block);
         if (action) controls.appendChild(action);
       }
     }
 
     blurBlock(block) {
       this.LastBlock = document.getElementsByClassName('focused')[0];
-      this.LastBlock.className = 'block';
+      if (this.LastBlock) this.LastBlock.classList.remove('focused')
 
       document.getElementById('controls').style.display = 'none';
     }
@@ -687,13 +689,6 @@ bar = {
     }
 
     initializeBlock(block) {
-      // TODO: Control visibility with CSS rather than by reading out dataset attributes
-      var src = block.children[0];
-      if (block.dataset.sourceVisibility == 'hidden') {
-        src.style.display = 'none';
-      } else {
-        src.style.display = '';
-      }
       var output = block.children[1];
       if (block.dataset.resultVisibility == 'hidden') {
         output.style.display = 'none';
@@ -710,12 +705,12 @@ bar = {
       // controls we don't unfocus the source block
       this.LastBlock = null;
       document.getElementById('controls').addEventListener('mouseover', (event) => {
-        this.LastBlock.className = 'block focused';
+        this.LastBlock.classList.add('focused');
         document.getElementById('controls').style.display = '';
       });
       document.getElementById('controls').addEventListener('mouseout', (event) => {
         document.getElementById('controls').style.display = 'none';
-        document.getElementsByClassName('focused')[0].className = 'block';
+        document.getElementsByClassName('focused')[0].classList.remove('focused');
       });
 
       // Slurp out any first H1 element and use it as a title
@@ -755,8 +750,83 @@ bar = {
       doBlock(toAutorun);
     }
   }
+
+  PocketBook.HotKeyManager = class HotKeyManager {
+    constructor(pocketbook) {
+      this.Parent = pocketbook
+
+      function downloadCopy() {
+          function makeid() {
+            var text = "";
+            var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            for (var i = 0; i < 5; i++)
+              text += possible.charAt(Math.floor(Math.random() * possible.length));
+            return text;
+          }
+
+          // Temporarily remove/regenerate the id and gist
+          var metadata = this.Parent.Content.getElementsByClassName('metadata')[0].dataset;
+          var oldgist = metadata.gist;
+          if (metadata.gist != undefined) {
+            delete metadata.gist;
+          }
+          var oldid = this.Parent.Content.id;
+          this.Parent.Content.id = makeid();
+
+          // Save things to disk
+          var link = document.createElement("a");
+          link.setAttribute("href", 'data:text/html,' + encodeURI(document.documentElement.outerHTML));
+          link.setAttribute("download", 'pocketbook.html');
+          link.click();
+
+          // Put the IDs back
+          metadata.gist = oldgist;
+         this.Parent.Content.id = oldid
+      }
+
+      // Override save, since the browser default will save the unmodified HTML :(
+      document.onkeydown = function(e) {
+        if ((e.metaKey || e.ctrlKey) && e.keyCode === 83) {
+          downloadCopy();
+          e.preventDefault();
+        }
+      }
+    }
+    
+  }
   
   PocketBook.Main = new PocketBook(document.getElementsByClassName('content')[0]);
+
+  // I like to visualize software as a tree of objects, this function prints the tree of
+  // an object and its public properties (based on a convention of uppercase property names
+  // a la Golang) as well as their types.
+  PocketBook.Help = function(obj, indent) {
+    var toReturn = "";
+    var shouldLog = indent == undefined;
+    obj = obj || PocketBook;
+    indent = indent || "";
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key) && obj[key]) {
+        if ("ABCDEFGHIJKLMNOPQRSTUVWXYZ".indexOf(key[0]) != -1) {
+          var type = obj[key].__proto__.constructor.name;
+          if (type === 'Function') {
+            if (obj[key].name) {
+              type = 'Class';
+            }
+          }
+          toReturn += indent + key + " [" + type + "]\n";
+          if (key != "Parent")
+            toReturn += PocketBook.Help(obj[key], indent + "    ");
+        }
+      }
+    }
+    if (shouldLog) {
+      console.log(toReturn);
+    } else {
+      return toReturn;
+    }
+  }
+
 })();
 </script>
 
