@@ -3,21 +3,6 @@
 <meta charset='utf-8'>
 <title>Pocketbook</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/1.8.6/showdown.min.js"></script>
-<script>
-function save() {
-  alert(document.body.innerHTML);
-}
-function fork() {
-  // Replace the unique ID
-
-}
-function autosave() {
-
-}
-function publish() {
-
-}
-</script>
 <style>
 .medium-style .content {
   margin-left: auto;
@@ -250,7 +235,7 @@ input[type="checkbox"]:checked + label::after  {
     </div>
 </div>
 <div id="notebook1" class="content">
-  <div id="metadata" style="display: none;"></div>
+  <div class="metadata" style="display: none;"></div>
   <div data-lang="md" data-visibility="output" data-autorun="false" class="block focused">
     <pre class="source" contenteditable="true">
 # Hello World
@@ -288,386 +273,484 @@ bar = {
 </body>
 
 <script>
-var converter = new showdown.Converter();
-var languages = {
-  md: {
-    eval: function(src) { return converter.makeHtml(src); },
-    name: "Markdown"
-  },
-  js: {
-    eval: function(src) {
-      return eval(src);
-    },
-    name: "Javascript"
-  },
-  deps: {
-    eval: function(src) {
-      var deps = src.split('\n'); 
-      var promises = [];
-      for (var i = 0; i < deps.length; i++) {
-        if (deps[i] == "") continue;
-        promises.push(new Promise((function(dep) { return function(resolve, reject) {
-          var s = document.createElement('script');
-          s.src = dep;
-          s.onload = resolve
-          s.onerror = reject
-          document.body.append(s);
-        }})(deps[i])));
+// Don't unintentionally pollute the global Namespace
+(function() {
+  window.PocketBook = function(content) {
+    this.Content = content;
+
+    // Used for programmatically gating any functionality
+    this.Version = [1,0,0];
+
+    // Keeps track of the Languages support by a given PocketBook (more can be registered inline)
+    this.Languages = {
+      md: {
+        eval: (function() {
+          var converter = new showdown.Converter();
+          return function(src) { return converter.makeHtml(src); }
+        })(),
+        name: "Markdown"
+      },
+      js: {
+        eval: function(src) {
+          return eval(src);
+        },
+        name: "Javascript"
+      },
+      deps: {
+        eval: function(src) {
+          var deps = src.split('\n'); 
+          var promises = [];
+          for (var i = 0; i < deps.length; i++) {
+            if (deps[i] == "") continue;
+            promises.push(new Promise((function(dep) { return function(resolve, reject) {
+              var s = document.createElement('script');
+              s.src = dep;
+              s.onload = resolve
+              s.onerror = reject 
+              document.body.append(s);
+            }})(deps[i])));
+          }
+          return Promise.all(promises)
+        },
+        name: "Dependencies"
+      },
+    };
+
+    // Stores
+    var LocalStorageBackingStore = this.LocalStorageBackingStore = function(id) {
+      this.Id = id;
+      this.Loaded = false;
+      this.load = function(cb) {
+        cb(window.localStorage.getItem(this.Id));
+      };
+      this.autosave = function() {
+        window.localStorage.setItem(this.Id, content.innerHTML);
+      };
+      // There's no distinction between autosave and save for localstorage
+      this.save = this.autosave;
+    };
+    var GistBackingStore = this.GistBackingStore = function(id) {
+      this.Id = id;
+      this.Loaded = false;
+      this.load = function(cb) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.open('GET', 'https://api.github.com/gists/' + gistid + "?seed=" + Math.random())
+        xhttp.addEventListener('load', function(e) {
+          if (xhttp.readyState == 4 && xhttp.status == 200) {
+            var index = JSON.parse(xhttp.response)["files"]["index.html"];
+            if (index["truncated"] === false) {
+              cb(index["content"]);
+            } else {
+              alert("Truncated gists not yet supported");
+            }
+          }
+        });
+        xhttp.send();
+      };
+      this.save = function(content, cb) {
+        if (!window.localStorage.getItem('githubkey')) {
+          var key = prompt("Please enter a github api key");
+          if (!key || key == "") {
+            alert('Saving failed');
+            return;
+          }
+          window.localStorage.setItem('githubkey', key);
+        }
+        var key = window.localStorage.getItem('githubkey')
+
+        if (this.Id) {
+          var toPatch = {
+            "files": {
+              "index.html": {
+                "content": content
+              }
+            }
+          };
+          var xhttp = new XMLHttpRequest();
+          xhttp.open('PATCH', 'https://api.github.com/gists/' + this.Id + '?access_token=' + key)
+          xhttp.setRequestHeader('Content-Type', 'application/json');
+          xhttp.addEventListener('load', function(e) {
+            if (xhttp.readyState == 4 && xhttp.status == 200) {
+              document.getElementById('status').innerHTML = 'Saved to Github Gist'
+              cb(this.Id);
+            }
+          });
+          xhttp.send(JSON.stringify(toPatch));
+        } else {
+          var toPost = {
+            "description": "Hello World Examples",
+            "public": true,
+            "files": {
+              "readme.md": {
+                content: "[Click here to view this pocketbook](https://pocketbook.software/#gistredirect)"
+              },
+              "index.html": {
+                "content": document.getElementsByClassName('content')[0].innerHTML
+              }
+            }
+          };
+          var xhttp = new XMLHttpRequest();
+          xhttp.open('POST', 'https://api.github.com/gists?access_token=' + key)
+          xhttp.setRequestHeader('Content-Type', 'application/json');
+          xhttp.addEventListener('load', function(e) {
+            if (xhttp.readyState == 4) {
+              var response = JSON.parse(xhttp.response);
+              if (response.id) {
+                this.Id = response.id;
+                cb(this.Id)
+              }
+            }
+          });
+          xhttp.send(JSON.stringify(toPost));
+        }
+      };
+      this.autosave = function() {
+
+      };
+    };
+
+    // Handles redirects and whatnot
+    this.DataManager = new (function(parent) {
+      this.Parent = parent
+      this.Source = null;
+
+      this._loaded = false;
+
+      // Check the redirect and the subdomains
+      this.handleURL = () => {
+
+        // If this is a redirect from a gist Readme, we need to read the referer out of the HTTPS
+        // headers to figure out what gist to load
+        if (window.location.hash == '#gistredirect') {
+          var gistid = document.referrer.match(/gist.github.com\/[^\/]+\/([a-z0-9]+)/)[1];
+          window.location = 'https://gist-' + gistid + '.pocketbook.software';
+          return;
+        }
+
+        // If this is a wildcarded subdomain (for sandboxing purposes), pull the URL and stick it in
+        // the metadata
+        if (window.location.href.match(/gist-[a-z0-9]+\.pocketbook\.software/)) {
+          var gistid = window.location.href.match(/gist-([a-z0-9]+)\.pocketbook\.software/)[1];
+          var metadata = content.getElementsByClassName('metadata')[0].dataset;
+          metadata.gist = gistid;
+        }
       }
-      return Promise.all(promises)
-    },
-    name: "Dependencies"
-  },
-};
 
-function updateLanguages() { 
-  var lang = document.getElementById("activelang");
-  var currentlang = lang.value;
+      // Figures out whether we should be loading from a particular LocalStorage key or from a Gist
+      this.resolveSource = () => {
+        var metadata = content.getElementsByClassName('metadata')[0].dataset;
+        if (metadata.gist) {
+          return new GistBackingStore(metadata.gist);
+        }
 
-  while (lang.firstChild) lang.removeChild(lang.firstChild);
-  Object.keys(languages).forEach(function(key) {
-    var choice = document.createElement('option');
-    choice.value = key;
-    choice.innerHTML = languages[key].name;
-    lang.appendChild(choice);
-  });
+        // The locally loaded bit may return another id (or a gist!) so we first load
+        if (!this._loaded) {
+          // This only works recursively because we know the LocalStorage Store is synchronous
+          this.LoadFromStore(new LocalStorageBackingStore(metadata.localId || "default"), false)
+          this._loaded = true;
+          return this.resolveSource();
+        }
 
-  lang.value = currentlang;
-}
+        return new LocalStorageBackingStore(metadata.localId || "default");
+      }
 
-function updateVisibility(block) {
-  // Could do this with CSS but don't want to fiddle with className splicing rn
-  var src = block.children[0];
-  var output = block.children[1];
-  if (block.dataset.sourceVisibility == 'hidden') { 
-    src.style.display = 'none';
-  } else {
-    src.style.display = '';
-  }
-  if (block.dataset.resultVisibility == 'hidden') { 
-    output.style.display = 'none';
-  } else {
-    output.style.display = '';
-  }
-}
+      // Loads everything up from the specified store into the main page's content.
+      this.LoadFromStore = (store, shouldInitialize) => {
+        store.load((content_) => {
+          if (content_) content.innerHTML = content_;
+          if (shouldInitialize) {
+            this.Parent.BlockController.initialize();
+          }
+        });
+      }
 
-var lastBlock = null;
+      // Initialization
+      this.initialize = function() {
+        this.handleURL();
+        this.Source = this.resolveSource();
+        this.LoadFromStore(this.Source, true);
+      }
+    })(this);
 
-document.getElementById('controls').addEventListener('mouseover', function(event) {
-        lastBlock.className = 'block focused';
-        document.getElementById('controls').style.display = ''; 
-});
+    // Wires up all the UI for the block-level controls
+    this.BlockController = new (function(parent) {
+      this.Parent = parent;
 
-document.getElementById('controls').addEventListener('mouseout', function(event) {
-        document.getElementById('controls').style.display = 'none'; 
-        document.getElementsByClassName('focused')[0].className = 'block';
-});
+      this.getFocusedBlock = function() {
 
-function initBlock(block) {
-  updateVisibility(block);
-  block.addEventListener('mouseover', function(event) {
-        // TODO: Move Focus
+      }
+
+      var key = {
+        CTRL: 0,
+        R: 0,
+      }
+
+      this.StatelessBlockActionClass = function(name, hotkey, execute) {
+        return new function() {
+          this.name = name;
+          this.render = function() {
+            var button = document.createElement('button');
+            button.innerHTML = name;
+            button.addEventListener('click', () => {
+              execute(document.getElementsByClassName('focused')[0]);
+            });
+            return button;
+          };
+          if (hotkey) this.hotkey = [hotkey, execute];
+        };
+      };
+
+      this.ToggleBlockActionClass = function(name, hotkey, getState, toggle) {
+        return new function() {
+          this.name = name;
+          this.render = function() {
+            // <div class="control"><input id="autorun" onclick="chooseAutorun(event)" type="checkbox" /><label for="autorun">Autorun </label></div>
+          };
+          if (hotkey) this.hotkey = [hotkey, execute];
+        };
+      };
+
+      this.Actions = [
+        new this.StatelessBlockActionClass("Run", [key.CTRL, key.R], (block) => {
+          this.runBlock(block); 
+        }),
+        new this.StatelessBlockActionClass("Add Above", null, function(block) {
+
+        }),
+        new this.StatelessBlockActionClass("Add Below", null, function(block) {
+          var block = document.createElement("div");
+          block.dataset.lang = "md";
+          block.dataset.sourceVisibility = "visible";
+          block.dataset.resultVisibility = "visible";
+          block.dataset.autorun = "false";
+          block.className = "block";
+
+          var source = document.createElement("pre");
+          source.className = "source";
+          source.contentEditable = "true";
+
+          var output = document.createElement("div");
+          output.className = "output";
+
+          block.appendChild(source);
+          block.appendChild(output);
+          initBlock(block);
+
+          var focused = document.getElementsByClassName('focused')[0];
+          focused.parentNode.insertBefore(block, focused.nextSibling);
+        }),
+        new this.StatelessBlockActionClass("Remove", null, function(block) {
+
+        }),
+        new this.ToggleBlockActionClass("Show Source", null, function(block) {
+          return block.dataset.sourceVisibility != "hidden";
+        }, function(block) {
+
+        }),
+        new this.ToggleBlockActionClass("Show Result", null, function(block) {
+          return block.dataset.resultVisibility != "hidden";
+        }, function(block) {
+
+        }),
+        new this.ToggleBlockActionClass("Autorun", null, function(block) {
+          return block.dataset.autorun == "true";
+        }, function(block) {
+
+        }),
+        new function() {
+          this.name = "Choose Language";
+          this.render = function() {
+
+            //document.getElementById('activelang').value = block.dataset.lang;
+
+            var lang = document.getElementById("activelang");
+            var currentlang = lang.value;
+
+            while (lang.firstChild) lang.removeChild(lang.firstChild);
+            Object.keys(languages).forEach(function(key) {
+              var choice = document.createElement('option');
+              choice.value = key;
+              choice.innerHTML = languages[key].name;
+              lang.appendChild(choice);
+            });
+            lang.value = currentlang;
+          };
+        }
+      ];
+
+      this.focusBlock = function(block) {
         if (document.getElementsByClassName('focused').length)
           document.getElementsByClassName('focused')[0].className = 'block';
         block.className = 'block focused';
         document.getElementById('controls').style.top = block.parentNode.offsetTop + block.offsetTop + "px";
         document.getElementById('controls').style.left = block.parentNode.offsetLeft - 140 + "px";
-
-        document.getElementById('activelang').value = block.dataset.lang;
-        document.getElementById('source-visibility').checked = block.dataset.sourceVisibility != "hidden";
-        document.getElementById('result-visibility').checked = block.dataset.resultVisibility != "hidden";
-        document.getElementById('autorun').checked = block.dataset.autorun == "true";
         document.getElementById('controls').style.display = ''; 
-  });
 
-  block.addEventListener('mouseout', function(event) {
-        lastBlock = document.getElementsByClassName('focused')[0];
-        lastBlock.className = 'block';
+        // Initialize all the actions
+        var controls = document.getElementById('controls');
+        controls.innerHTML = '';
+        for (var i = 0; i < this.Actions.length; i++) {
+          var action = this.Actions[i].render();
+          if (action) controls.appendChild(action);
+        }
+      };
+
+      this.blurBlock = function(block) {
+        this.LastBlock = document.getElementsByClassName('focused')[0];
+        this.LastBlock.className = 'block';
 
         document.getElementById('controls').style.display = 'none'; 
-  });
-}
+      };
 
-// Add the right event listeners to shift focus around as you move
-function init() {
-  var toAutorun = [];
+      this.runBlock = (block, cb) => {
+        var console = {
+          log: function(e) { 
+            alert(e); 
+          }
+        };
+        var handleError = function(error) {
+          console.log("Got error running block", error);
+          block.children[1].innerHTML = error;
+        }
+        try {
+          Promise.resolve(this.Parent.Languages[block.dataset.lang].eval(block.children[0].innerText)).then(function(result) {
+            if (result && result.render) {
+              block.children[1].innerHTML = result.render();
+            } else {
+              block.children[1].innerHTML = result;
+            }
+            block.lastElementChild.className = (block.lastElementChild.className || "").replace(' blink', '');
+            setTimeout(function() {
+              block.lastElementChild.className += " blink";
+              setTimeout(function() {
+                block.lastElementChild.className = (block.lastElementChild.className || "").replace(' blink', '');
+              }, 500);
+            }, 0);
+            if (cb) cb();
+          }).catch(handleError);
+        } catch(error) {
+          handleError(error);
+        }
+      }
 
-  var blocks = document.getElementsByClassName("block");
-  for (var i = 0; i < blocks.length; i++) {
-    if (blocks[i].dataset.autorun == 'true') toAutorun.push(blocks[i]);
-    initBlock(blocks[i]);
-  }
+      this.initializeBlock = function(block) {
+        // TODO: Control visibility with CSS rather than by reading out dataset attributes
+        var src = block.children[0];
+        if (block.dataset.sourceVisibility == 'hidden') { 
+          src.style.display = 'none';
+        } else {
+          src.style.display = '';
+        }
+        var output = block.children[1];
+        if (block.dataset.resultVisibility == 'hidden') { 
+          output.style.display = 'none';
+        } else {
+          output.style.display = '';
+        }
 
-  document.title = "PocketBook: " + document.getElementsByTagName('h1')[0].innerHTML;
+        block.addEventListener('mouseover', (event) => { this.focusBlock(block); });
+        block.addEventListener('mouseout', (event) => { this.blurBlock(block); });
+      };
 
-  var metadata = document.getElementById('metadata').dataset;
-  if (metadata.gist) {
-    document.getElementById('source').innerHTML = '<a href="http://gist.github.com/' + metadata.gist + '">Source Gist</a>';
-  }
+      this.initialize = () => {
 
-  //Queue up all the autorun cells
-  var do_block = function(blocks) {
-    if (blocks.length > 0) {
-      run_block(blocks[0], function() {
-        do_block(blocks.slice(1));
-      });
-    } 
-  }
-  do_block(toAutorun);
-}
+        // Register handlers on the controls such that if you mouse off a block but onto the
+        // controls we don't unfocus the source block
+        this.LastBlock = null;
+        document.getElementById('controls').addEventListener('mouseover', (event) => {
+                this.LastBlock.className = 'block focused';
+                document.getElementById('controls').style.display = ''; 
+        });
+        document.getElementById('controls').addEventListener('mouseout', (event) => {
+                document.getElementById('controls').style.display = 'none'; 
+                document.getElementsByClassName('focused')[0].className = 'block';
+        });
 
-// Execute the currently selected block
-function run(cb) {
-  var block = document.getElementsByClassName('focused')[0];
-  run_block(block, cb);
-}
+        // Slurp out any first H1 element and use it as a title
+        document.title = "PocketBook: " + document.getElementsByTagName('h1')[0].innerHTML;
 
-function run_block(block, cb) {
-  var console = {
-    log: function(e) { 
-      alert(e); 
+        // Slurp out any gist in case it exists
+        var metadata = content.getElementsByClassName('metadata')[0].dataset;
+        if (metadata.gist) {
+          document.getElementById('source').innerHTML = '<a href="http://gist.github.com/' + metadata.gist + '">Source Gist</a>';
+        }
+
+        // Initialize every block and collect those that need to be autorun-ed
+        var toAutorun = [];
+        var blocks = document.getElementsByClassName("block");
+        for (var i = 0; i < blocks.length; i++) {
+          if (blocks[i].dataset.autorun == 'true') toAutorun.push(blocks[i]);
+          this.initializeBlock(blocks[i]);
+        }
+
+        // Recursively call each autorun cell
+        var doBlock = (blocks) => {
+          if (blocks.length > 0) {
+            this.runBlock(blocks[0], function() {
+              doBlock(blocks.slice(1));
+            });
+          } else {
+
+            // If nothing else left to run, kick off autosaving
+            var autosave = () => {
+              console.log("Autosaving")
+              this.Parent.DataManager.Source.autosave();
+              setTimeout(autosave, 1000);
+            }
+            autosave();
+          }
+        };
+        doBlock(toAutorun);
+      }
+    })(this);
+
+    function downloadCopy() {
+        function makeid() {
+          var text = "";
+          var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+          for (var i = 0; i < 5; i++)
+            text += possible.charAt(Math.floor(Math.random() * possible.length));
+          return text;
+        }
+
+        // Temporarily remove/regenerate the id and gist
+        var metadata = document.getElementById('metadata').dataset;
+        var oldgist = metadata.gist;
+        if (metadata.gist != undefined) {
+          delete metadata.gist;
+        }
+        var content = document.getElementsByClassName('content')[0];
+        var oldid = content.id;
+        content.id = makeid();
+
+        // Save things to disk
+        var link = document.createElement("a");
+        link.setAttribute("href", 'data:text/html,' + encodeURI(document.documentElement.outerHTML));
+        link.setAttribute("download", 'pocketbook.html');
+        link.click();
+
+        // Put the IDs back
+        metadata.gist = oldgist;
+        content.id = oldid
     }
+
+    // Override save, since the browser default will save the unmodified HTML :(
+    document.onkeydown = function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.keyCode === 83) {
+        downloadCopy();
+        e.preventDefault();
+      }
+    }
+
+    this.initialize = () => {
+      this.DataManager.initialize();
+      console.log("Done initializing")
+    };
   };
-  var handleError = function(error) {
-    console.log("Got error running block", error);
-    block.children[1].innerHTML = error;
-  }
-  try {
-    Promise.resolve(languages[block.dataset.lang].eval(block.children[0].innerText)).then(function(result) {
-      if (result && result.render) {
-        block.children[1].innerHTML = result.render();
-      } else {
-        block.children[1].innerHTML = result;
-      }
-      block.lastElementChild.className = (block.lastElementChild.className || "").replace(' blink', '');
-      setTimeout(function() {
-        block.lastElementChild.className += " blink";
-        setTimeout(function() {
-          block.lastElementChild.className = (block.lastElementChild.className || "").replace(' blink', '');
-        }, 500);
-      }, 0);
-      if (cb) cb();
-    }).catch(handleError);
-  } catch(error) {
-    handleError(error);
-  }
-}
-
-function chooseSourceVisibility(event) {
-  var block = document.getElementsByClassName('focused')[0];
-  block.dataset.sourceVisibility = event.target.checked ? "visible" : "hidden";
-  updateVisibility(block);
-}
-
-function chooseResultVisibility(event) {
-  var block = document.getElementsByClassName('focused')[0];
-  block.dataset.resultVisibility = event.target.checked ? "visible" : "hidden";
-  updateVisibility(block);
-}
-
-function chooseAutorun(event) {
-  var block = document.getElementsByClassName('focused')[0];
-  block.dataset.autorun = event.target.checked ? "true" : "false";
-}
-
-function chooseLanguage(event) {
-  var block = document.getElementsByClassName('focused')[0];
-  block.dataset.lang = event.target.value;
-  updateVisibility(block);
-}
-
-var GIST_CACHE = {
-
-};
-
-// Periodically persist the current notebook to localstorage
-function autosave() {
-  console.log("Autosaving");
-  var metadata = document.getElementById('metadata').dataset;
-  var content = document.getElementsByClassName('content')[0];
-  var id = metadata.gist ? metadata.gist : content.id;
-  if (content.innerHTML != GIST_CACHE[metadata.gist]) {
-    window.localStorage.setItem(id, content.innerHTML);
-  }
-  setTimeout(autosave, 1000);
-}
-
-// If this is a redirect from the Readme of a gist read the gist ID from the referer
-if (window.location.hash == '#gistredirect') {
-  var gistid = document.referrer.match(/gist.github.com\/[^\/]+\/([a-z0-9]+)/)[1];
-  window.location = 'https://gist-' + gistid + '.pocketbook.software'
-
-// Use the wildcarded domain to find what gist to pull (this ensures we're sandboxing each gist to a separate domain)
-} else if (window.location.href.match(/gist-[a-z0-9]+\.pocketbook\.software/)) {
-  var gistid = window.location.href.match(/gist-([a-z0-9]+)\.pocketbook\.software/)[1];
-  var xhttp = new XMLHttpRequest();
-  xhttp.open('GET', 'https://api.github.com/gists/' + gistid + "?seed=" + Math.random())
-  xhttp.addEventListener('load', function(e) {
-    if (xhttp.readyState == 4 && xhttp.status == 200) {
-      var index = JSON.parse(xhttp.response)["files"]["index.html"];
-      if (index["truncated"] === false) {
-         document.getElementsByClassName('content')[0].innerHTML = index["content"];
-         // We might not have persisted the gist id self-referentially yet
-         document.getElementById("metadata").dataset.gist = gistid;
-         GIST_CACHE[gistid] = index["content"];
-
-         init();
-         autosave();
-      } else {
-        console.log("Truncated gists not yet supported");
-      }
-    }
-  });
-  xhttp.send();
-} else {
-  // Load any saved, more up to date, copies of this notebook
-  // Note: Need Disable Local File Restructions in the Developer Menu in Safari for this to work with file://
-  var content = document.getElementsByClassName('content')[0];
-  var savedCopy = window.localStorage.getItem(content.id);
-  if (savedCopy && (savedCopy != content.innerHTML)) {
-    document.getElementsByClassName('content')[0].innerHTML = savedCopy;
-    document.getElementById('status').innerHTML = 'Autosaved to Browser Local Storage';
-  } else {
-    document.getElementById('revertButton').style.display = 'none';
-    // document.getElementById('saveToDownloadsButton').style.display = 'none';
-  }
-  init();
-  autosave();
-}
-
-function revert() {
-  window.localStorage.removeItem(content.id);
-  location.reload();
-}
-
-function saveToGithub() {
-  if (!window.localStorage.getItem('githubkey')) {
-    var key = prompt("Please enter a github api key");
-    if (!key || key == "") {
-      alert('Saving failed');
-      return;
-    }
-    window.localStorage.setItem('githubkey', key);
-  }
-  var key = window.localStorage.getItem('githubkey')
-  var content = document.getElementsByClassName('content')[0].innerHTML;
-
-  var metadata = document.getElementById('metadata').dataset;
-  if (metadata.gist) {
-    var toPatch = {
-      "files": {
-        "index.html": {
-          "content": content
-        }
-      }
-    };
-    var xhttp = new XMLHttpRequest();
-    xhttp.open('PATCH', 'https://api.github.com/gists/' + metadata.gist + '?access_token=' + key)
-    xhttp.setRequestHeader('Content-Type', 'application/json');
-    xhttp.addEventListener('load', function(e) {
-      if (xhttp.readyState == 4 && xhttp.status == 200) {
-        document.getElementById('status').innerHTML = 'Saved to Github Gist'
-
-        // Clear ut any temporary state and save cached state
-        window.localStorage.removeItem(metadata.gist);
-        GIST_CACHE[metadata.gist] = content;
-      }
-    });
-    xhttp.send(JSON.stringify(toPatch));
-  } else {
-    // Createa new gist and persist it
-    var toPost = {
-      "description": "Hello World Examples",
-      "public": true,
-      "files": {
-        "readme.md": {
-          content: "[Click here to view this pocketbook](https://pocketbook.software/#gistredirect)"
-        },
-        "index.html": {
-          "content": document.getElementsByClassName('content')[0].innerHTML
-        }
-      }
-    };
-    var xhttp = new XMLHttpRequest();
-    xhttp.open('POST', 'https://api.github.com/gists?access_token=' + key)
-    xhttp.setRequestHeader('Content-Type', 'application/json');
-    xhttp.addEventListener('load', function(e) {
-      if (xhttp.readyState == 4) {
-        var response = JSON.parse(xhttp.response);
-        if (response.id) {
-          metadata.gist = response.id;
-
-          GIST_CACHE[metadata.gist] = content;
-          window.localStorage.removeItem(metadata.gist);
-        }
-      }
-    });
-    xhttp.send(JSON.stringify(toPost));
-  }
-}
-
-function makeid() {
-  var text = "";
-  var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (var i = 0; i < 5; i++)
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  return text;
-}
-
-function downloadCopy() {
-    // Temporarily remove/regenerate the id and gist
-    var metadata = document.getElementById('metadata').dataset;
-    var oldgist = metadata.gist;
-    if (metadata.gist != undefined) {
-      delete metadata.gist;
-    }
-    var content = document.getElementsByClassName('content')[0];
-    var oldid = content.id;
-    content.id = makeid();
-
-    // Save things to disk
-    var link = document.createElement("a");
-    link.setAttribute("href", 'data:text/html,' + encodeURI(document.documentElement.outerHTML));
-    link.setAttribute("download", 'pocketbook.html');
-    link.click();
-
-    // Put the IDs back
-    metadata.gist = oldgist;
-    content.id = oldid
-}
-
-// Override save, since the browser default will save the unmodified HTML :(
-document.onkeydown = function(e) {
-  if ((e.metaKey || e.ctrlKey) && e.keyCode === 83) {
-    downloadCopy();
-    e.preventDefault();
-  }
-}
-
-//Insert a new block below the current cell
-function addBelow() {
-  var block = document.createElement("div");
-  block.dataset.lang = "md";
-  block.dataset.sourceVisibility = "visible";
-  block.dataset.resultVisibility = "visible";
-  block.dataset.autorun = "false";
-  block.className = "block";
-
-  var source = document.createElement("pre");
-  source.className = "source";
-  source.contentEditable = "true";
-
-  var output = document.createElement("div");
-  output.className = "output";
-
-  block.appendChild(source);
-  block.appendChild(output);
-  initBlock(block);
-
-  var focused = document.getElementsByClassName('focused')[0];
-  focused.parentNode.insertBefore(block, focused.nextSibling);
-}
-
+  
+  PocketBook.Main = new PocketBook(document.getElementsByClassName('content')[0]);
+  PocketBook.Main.initialize();
+})();
 </script>
 
 <link rel="stylesheet"
