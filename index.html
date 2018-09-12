@@ -298,123 +298,121 @@ input[type="checkbox"]:checked + label::after  {
 </div>
 <div id="controls"></div>
 <div class="content">
-        <div class="metadata" style="display: none;"></div>
-        <div data-lang="md" data-visibility="output" data-autorun="false" class="block hide-source" data-source-visibility="hidden">
-          <pre class="source hljs coffeescript" contenteditable="true"><span class="hljs-comment"># PocketBook</span>
-      <span class="hljs-comment">##A Lightweight Programming Notebook</span>
-      
-      Over the past number <span class="hljs-keyword">of</span> years [I](http:<span class="hljs-regexp">//</span>bennewhouse.com) have become increasingly attached to programming <span class="hljs-keyword">in</span> environments like [Jupyter Notebooks](http:<span class="hljs-regexp">//</span>jupyter.org). Tools such <span class="hljs-keyword">as</span> these <span class="hljs-keyword">do</span> a great job <span class="hljs-keyword">of</span> presenting incremental thinking <span class="hljs-keyword">as</span> one works through a problem. This <span class="hljs-keyword">is</span> particularly valuable <span class="hljs-keyword">in</span> software <span class="hljs-keyword">as</span> programmers are often constrained <span class="hljs-keyword">by</span> what they can model <span class="hljs-keyword">in</span> their head. Nevertheless, these environments can often be quite heavyweight, requiring a server <span class="hljs-keyword">and</span> a bunch <span class="hljs-keyword">of</span> configuration to get a workflow that suits ones needs.
-      
-      In parallel to <span class="hljs-keyword">this</span>, I<span class="hljs-string">'ve spent an increasing amount of time writing code in dialects of [LISP](https://en.wikipedia.org/wiki/Lisp_(programming_language)). LISP is an acquired taste, but what I find particularly enjoyable about LISP is the idea of tools that are self-modifying (via "macros" in the case of LISP). While this self-modification can quickly devolve into dangerously unmaintainable software, it is an incredibly powerful tool when prototyping and exploring how we build the things we build.
-      
-      **PocketBook** lives at the intersection of these two concepts. It is a single HTML page that allows one to write and compute inline, while at the same time being incredibly flexible to self-modification: one can introduce new languages and add new functionality all without modifying the underlying code. It'</span>s also designed to be presentable so that one can use it <span class="hljs-keyword">in</span> websites <span class="hljs-keyword">or</span> <span class="hljs-keyword">as</span> a lightweight blogging platform.
-      
-      ---
-      
-      <span class="hljs-comment">## A Quick Introduction</span>
-      
-      PocketBook ships with a few different <span class="hljs-string">"Languages"</span> inline:
-      
-      - **Javascript**
-      - **Markdown**
-      - **Dependencies**
-      
-      For <span class="hljs-keyword">this</span> bit <span class="hljs-keyword">of</span> expository introductions, I<span class="hljs-string">'m using **Markdown**. You can find the source by hovering over this text and clicking *Show Source*.
-      Next, let'</span>s look at some basic **Javascript.** At its most basic, you can use it like a calculator:
-      
-      
-      </pre>
-          <div class="result"><h1 id="pocketbook">PocketBook</h1>
-      <h2 id="alightweightprogrammingnotebook">A Lightweight Programming Notebook</h2>
-      <p>Over the past number of years <a href="http://bennewhouse.com">I</a> have become increasingly attached to programming in environments like <a href="http://jupyter.org">Jupyter Notebooks</a>. Tools such as these do a great job of presenting incremental thinking as one works through a problem. This is particularly valuable in software as programmers are often constrained by what they can model in their head. Nevertheless, these environments can often be quite heavyweight, requiring a server and a bunch of configuration to get a workflow that suits ones needs.</p>
-      <p>In parallel to this, I've spent an increasing amount of time writing code in dialects of <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language)">LISP</a>. LISP is an acquired taste, but what I find particularly enjoyable about LISP is the idea of tools that are self-modifying (via "macros" in the case of LISP). While this self-modification can quickly devolve into dangerously unmaintainable software, it is an incredibly powerful tool when prototyping and exploring how we build the things we build.</p>
-      <p><strong>PocketBook</strong> lives at the intersection of these two concepts. It is a single HTML page that allows one to write and compute inline, while at the same time being incredibly flexible to self-modification: one can introduce new languages and add new functionality all without modifying the underlying code. It's also designed to be presentable so that one can use it in websites or as a lightweight blogging platform.</p>
-      <hr>
-      <h2 id="aquickintroduction">A Quick Introduction</h2>
-      <p>PocketBook ships with a few different "Languages" inline:</p>
-      <ul>
-      <li><strong>Javascript</strong></li>
-      <li><strong>Markdown</strong></li>
-      <li><strong>Dependencies</strong></li>
-      </ul>
-      <p>For this bit of expository introductions, I'm using <strong>Markdown</strong>. You can find the source by hovering over this text and clicking <em>Show Source</em>.</p>
-      <p>Next, let's look at some basic <strong>Javascript.</strong> At its most basic, you can use it like a calculator:</p></div>
-        </div><div data-lang="js" data-visibility="source" data-autorun="false" class="block">
-          <pre class="source hljs cs" contenteditable="true"><span class="hljs-keyword">let</span> x = <span class="hljs-number">2</span>;
-      x*x + <span class="hljs-number">3</span>*x + <span class="hljs-number">4</span>
-      </pre>
-          <div class="result">14</div>
-        </div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs coffeescript" contenteditable="true">Whatever <span class="hljs-keyword">is</span> returned <span class="hljs-keyword">from</span> the last expression <span class="hljs-keyword">is</span> rendered <span class="hljs-keyword">in</span> the resulting output, so <span class="hljs-keyword">if</span> you <span class="hljs-keyword">return</span> a DOM Element, it will render inline:</pre><div class="result"><p>Whatever is returned from the last expression is rendered in the resulting output, so if you return a DOM Element, it will render inline:</p></div></div><div data-lang="js" data-source-visibility="visible" data-result-visibility="visible" data-autorun="false" class="block"><pre class="source hljs javascript" contenteditable="true"><span class="hljs-keyword">let</span> button = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">'button'</span>);
-      button.innerHTML = <span class="hljs-string">'Click Me'</span>;
-      button.onclick = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>)</span>{ alert(<span class="hljs-string">'Hello!'</span>); };
-      button
-      </pre><div class="result"><button>Click Me</button></div></div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs cs" contenteditable="true">Now, <span class="hljs-keyword">let</span><span class="hljs-string">'s get a little fancy and add a new language. We'</span>ll <span class="hljs-keyword">add</span> my LISP <span class="hljs-keyword">using</span> a dependency block. A dependency block includes other scripts, <span class="hljs-function">one per each <span class="hljs-title">line</span> (<span class="hljs-params"><span class="hljs-keyword">in</span> parallel, but we only have one here</span>):</span></pre><div class="result"><p>Now, let's get a little fancy and add a new language. We'll add my LISP using a dependency block. A dependency block includes other scripts, one per each line (in parallel, but we only have one here):</p></div></div><div data-lang="deps" data-source-visibility="visible" data-result-visibility="hidden" data-autorun="true" class="block hide-result"><pre class="source hljs cpp" contenteditable="true">http:<span class="hljs-comment">//bencubator.com/lib/blip-071718.js</span></pre><div class="result" style="display: none;">[object Event]</div></div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs sql" contenteditable="true">Now let's <span class="hljs-keyword">use</span> the aforementioned <span class="hljs-keyword">self</span>-<span class="hljs-keyword">modification</span> <span class="hljs-keyword">to</span> wire up the <span class="hljs-string">`evaluate`</span> <span class="hljs-keyword">function</span> <span class="hljs-keyword">as</span> a separate runtime!</pre><div class="result"><p>Now let's use the aforementioned self-modification to wire up the <code>evaluate</code> function as a separate runtime!</p></div></div><div data-lang="js" data-source-visibility="visible" data-result-visibility="hidden" data-autorun="true" class="block hide-result"><pre class="source hljs php" contenteditable="true">PocketBook.Main.Languages[<span class="hljs-string">'blip'</span>] = {
-        name: <span class="hljs-string">"Blip"</span>,
-        <span class="hljs-keyword">eval</span>: evaluate <span class="hljs-comment">// This comes from the above script</span>
-      }
-      </pre><div class="result" style="display: none;">[object Object]</div></div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs sql" contenteditable="true">Once this is run, we can <span class="hljs-keyword">use</span> a <span class="hljs-keyword">new</span> <span class="hljs-keyword">language</span> (selected <span class="hljs-keyword">at</span> the bottom <span class="hljs-keyword">of</span> the menu <span class="hljs-keyword">on</span> the <span class="hljs-keyword">left</span> <span class="hljs-keyword">to</span> run blocks <span class="hljs-keyword">of</span> code <span class="hljs-keyword">with</span>!)</pre><div class="result"><p>Once this is run, we can use a new language (selected at the bottom of the menu on the left to run blocks of code with!)</p></div></div><div data-lang="blip" data-source-visibility="visible" data-result-visibility="visible" data-autorun="false" class="block"><pre class="source hljs bash" contenteditable="true">(<span class="hljs-built_in">let</span> (x 2)
-        (+ (* x x) (+ (* 3 x) 4)))
-      </pre><div class="result">14</div></div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs markdown" contenteditable="true">---
-      
-      <span class="hljs-section"># FAQ</span>
-      
-      <span class="hljs-strong">**Where are things saved?**</span>
-      
-      By default, things are saved to local storage in your browser. If you'd like something more permanent, you can save to a Github Gist (see the menu in the top left corner). You'll need to make a personal access token to do so.
-      
-      <span class="hljs-strong">**Why not fork Jupyter/Iodide/ObservableHQ?**</span>
-      
-      A few different reasons:
-      <span class="hljs-bullet">- </span>ObservableHQ isn't open source, as far as I can tell.
-      <span class="hljs-bullet">- </span>I didn't to run servers (a la Jupyter): browsers are powerful these days! [<span class="hljs-string">https://pocketbook.software</span>](<span class="hljs-link">https://pocketbook.software</span>) is literally just an HTML page in an AWS S3 bucket (behind CloudFront for HTTPS).
-      <span class="hljs-bullet">- </span>I wanted something tiny that made minimal assumptions about the front-end framework or transpiler de jour so that it had staying power.
-      
-      <span class="hljs-strong">**Can I add X feature?**</span>
-      
-      My first suggestion would be to try to add it inline: all of the PocketBook state is available for you to modify and the code should be pretty readable. If that doesn't work, send me a pull request! If it's good, I'll merge it.
-      <div><br></div><div>If it's helpful, I wrote a little function that should dump out the latest layout of the global `PocketBook` object. `PocketBook.Main` refers to the main instance.</div></pre><div class="result"><hr>
-      <h1 id="faq">FAQ</h1>
-      <p><strong>Where are things saved?</strong></p>
-      <p>By default, things are saved to local storage in your browser. If you'd like something more permanent, you can save to a Github Gist (see the menu in the top left corner). You'll need to make a personal access token to do so.</p>
-      <p><strong>Why not fork Jupyter/Iodide/ObservableHQ?</strong></p>
-      <p>A few different reasons:</p>
-      <ul>
-      <li>ObservableHQ isn't open source, as far as I can tell.</li>
-      <li>I didn't to run servers (a la Jupyter): browsers are powerful these days! <a href="https://pocketbook.software">https://pocketbook.software</a> is literally just an HTML page in an AWS S3 bucket (behind CloudFront for HTTPS).</li>
-      <li>I wanted something tiny that made minimal assumptions about the front-end framework or transpiler de jour so that it had staying power.</li>
-      </ul>
-      <p><strong>Can I add X feature?</strong></p>
-      <p>My first suggestion would be to try to add it inline: all of the PocketBook state is available for you to modify and the code should be pretty readable. If that doesn't work, send me a pull request! If it's good, I'll merge it.</p>
-      <p>If it's helpful, I wrote a little function that should dump out the latest layout of the global <code>PocketBook</code> object. <code>PocketBook.Main</code> refers to the main instance.</p></div></div><div data-lang="js" data-source-visibility="visible" data-result-visibility="visible" data-autorun="false" class="block"><pre class="source" contenteditable="true">PocketBook.Help()</pre><div class="result"><pre>Storage [Object]
-          LocalStorageBackingStore [Class]
-          GistBackingStore [Class]
-      StorageManager [Class]
-      UI [Object]
-          StatelessBlockAction [Class]
-          ToggleBlockAction [Class]
-          BlockController [Class]
-          StatelessGlobalAction [Class]
-          TopBarController [Class]
-      HotKeyManager [Class]
-      Main [PocketBook]
-          Version [Array]
-          Content [HTMLDivElement]
-          Languages [Object]
-          BlockController [BlockController]
-              Parent [PocketBook]
-              Actions [Array]
-              LastBlock [HTMLDivElement]
-          TopBarController [TopBarController]
-              Parent [PocketBook]
-              Actions [Array]
-          StorageManager [StorageManager]
-              Parent [PocketBook]
-              Source [GistBackingStore]
-                  Id [String]
-          HotKeyManager [HotKeyManager]
-              Parent [PocketBook]
-      Help [Function]
-      </pre></div></div>
+  <div class="metadata" style="display: none;"></div>
+  <div data-lang="md" data-visibility="output" data-autorun="false" class="block hide-source" data-source-visibility="hidden">
+    <pre class="source hljs coffeescript" contenteditable="true"><span class="hljs-comment"># PocketBook</span>
+<span class="hljs-comment">##A Lightweight Programming Notebook</span>
+
+Over the past number <span class="hljs-keyword">of</span> years [I](http:<span class="hljs-regexp">//</span>bennewhouse.com) have become increasingly attached to programming <span class="hljs-keyword">in</span> environments like [Jupyter Notebooks](http:<span class="hljs-regexp">//</span>jupyter.org). Tools such <span class="hljs-keyword">as</span> these <span class="hljs-keyword">do</span> a great job <span class="hljs-keyword">of</span> presenting incremental thinking <span class="hljs-keyword">as</span> one works through a problem. This <span class="hljs-keyword">is</span> particularly valuable <span class="hljs-keyword">in</span> software <span class="hljs-keyword">as</span> programmers are often constrained <span class="hljs-keyword">by</span> what they can model <span class="hljs-keyword">in</span> their head. Nevertheless, these environments can often be quite heavyweight, requiring a server <span class="hljs-keyword">and</span> a bunch <span class="hljs-keyword">of</span> configuration to get a workflow that suits ones needs.
+
+In parallel to <span class="hljs-keyword">this</span>, I<span class="hljs-string">'ve spent an increasing amount of time writing code in dialects of [LISP](https://en.wikipedia.org/wiki/Lisp_(programming_language)). LISP is an acquired taste, but what I find particularly enjoyable about LISP is the idea of tools that are self-modifying (via "macros" in the case of LISP). While this self-modification can quickly devolve into dangerously unmaintainable software, it is an incredibly powerful tool when prototyping and exploring how we build the things we build.
+
+**PocketBook** lives at the intersection of these two concepts. It is a single HTML page that allows one to write and compute inline, while at the same time being incredibly flexible to self-modification: one can introduce new languages and add new functionality all without modifying the underlying code. It'</span>s also designed to be presentable so that one can use it <span class="hljs-keyword">in</span> websites <span class="hljs-keyword">or</span> <span class="hljs-keyword">as</span> a lightweight blogging platform.
+
+---
+
+<span class="hljs-comment">## A Quick Introduction</span>
+
+PocketBook ships with a few different <span class="hljs-string">"Languages"</span> inline:
+
+- **Javascript**
+- **Markdown**
+- **Dependencies**
+
+For <span class="hljs-keyword">this</span> bit <span class="hljs-keyword">of</span> expository introductions, I<span class="hljs-string">'m using **Markdown**. You can find the source by hovering over this text and clicking *Show Source*.
+Next, let'</span>s look at some basic **Javascript.** At its most basic, you can use it like a calculator:
+
+
+</pre>
+    <div class="result"><h1 id="pocketbook">PocketBook</h1>
+<h2 id="alightweightprogrammingnotebook">A Lightweight Programming Notebook</h2>
+<p>Over the past number of years <a href="http://bennewhouse.com">I</a> have become increasingly attached to programming in environments like <a href="http://jupyter.org">Jupyter Notebooks</a>. Tools such as these do a great job of presenting incremental thinking as one works through a problem. This is particularly valuable in software as programmers are often constrained by what they can model in their head. Nevertheless, these environments can often be quite heavyweight, requiring a server and a bunch of configuration to get a workflow that suits ones needs.</p>
+<p>In parallel to this, I've spent an increasing amount of time writing code in dialects of <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language)">LISP</a>. LISP is an acquired taste, but what I find particularly enjoyable about LISP is the idea of tools that are self-modifying (via "macros" in the case of LISP). While this self-modification can quickly devolve into dangerously unmaintainable software, it is an incredibly powerful tool when prototyping and exploring how we build the things we build.</p>
+<p><strong>PocketBook</strong> lives at the intersection of these two concepts. It is a single HTML page that allows one to write and compute inline, while at the same time being incredibly flexible to self-modification: one can introduce new languages and add new functionality all without modifying the underlying code. It's also designed to be presentable so that one can use it in websites or as a lightweight blogging platform.</p>
+<hr>
+<h2 id="aquickintroduction">A Quick Introduction</h2>
+<p>PocketBook ships with a few different "Languages" inline:</p>
+<ul>
+<li><strong>Javascript</strong></li>
+<li><strong>Markdown</strong></li>
+<li><strong>Dependencies</strong></li>
+</ul>
+<p>For this bit of expository introductions, I'm using <strong>Markdown</strong>. You can find the source by hovering over this text and clicking <em>Show Source</em>.</p>
+<p>Next, let's look at some basic <strong>Javascript.</strong> At its most basic, you can use it like a calculator:</p></div>
+  </div><div data-lang="js" data-visibility="source" data-autorun="false" class="block">
+    <pre class="source hljs cs" contenteditable="true"><span class="hljs-keyword">let</span> x = <span class="hljs-number">2</span>;
+x*x + <span class="hljs-number">3</span>*x + <span class="hljs-number">4</span>      </pre>
+    <div class="result">14</div>
+  </div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs coffeescript" contenteditable="true">Whatever <span class="hljs-keyword">is</span> returned <span class="hljs-keyword">from</span> the last expression <span class="hljs-keyword">is</span> rendered <span class="hljs-keyword">in</span> the resulting output, so <span class="hljs-keyword">if</span> you <span class="hljs-keyword">return</span> a DOM Element, it will render inline:</pre><div class="result"><p>Whatever is returned from the last expression is rendered in the resulting output, so if you return a DOM Element, it will render inline:</p></div></div><div data-lang="js" data-source-visibility="visible" data-result-visibility="visible" data-autorun="true" class="block"><pre class="source hljs javascript" contenteditable="true"><span class="hljs-keyword">let</span> button = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">'button'</span>);
+button.innerHTML = <span class="hljs-string">'Click Me'</span>;
+button.onclick = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>)</span>{ alert(<span class="hljs-string">'Hello!'</span>); };
+button      
+</pre><div class="result"><button>Click Me</button></div></div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs cs" contenteditable="true">Now, <span class="hljs-keyword">let</span><span class="hljs-string">'s get a little fancy and add a new language. We'</span>ll <span class="hljs-keyword">add</span> my LISP <span class="hljs-keyword">using</span> a dependency block. A dependency block includes other scripts, <span class="hljs-function">one per each <span class="hljs-title">line</span> (<span class="hljs-params"><span class="hljs-keyword">in</span> parallel, but we only have one here</span>):</span></pre><div class="result"><p>Now, let's get a little fancy and add a new language. We'll add my LISP using a dependency block. A dependency block includes other scripts, one per each line (in parallel, but we only have one here):</p></div></div><div data-lang="deps" data-source-visibility="visible" data-result-visibility="hidden" data-autorun="true" class="block hide-result"><pre class="source hljs cpp" contenteditable="true">http:<span class="hljs-comment">//bencubator.com/lib/blip-071718.js</span></pre><div class="result" style="display: none;">[object Event]</div></div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs sql" contenteditable="true">Now let's <span class="hljs-keyword">use</span> the aforementioned <span class="hljs-keyword">self</span>-<span class="hljs-keyword">modification</span> <span class="hljs-keyword">to</span> wire up the <span class="hljs-string">`evaluate`</span> <span class="hljs-keyword">function</span> <span class="hljs-keyword">as</span> a separate runtime!</pre><div class="result"><p>Now let's use the aforementioned self-modification to wire up the <code>evaluate</code> function as a separate runtime!</p></div></div><div data-lang="js" data-source-visibility="visible" data-result-visibility="hidden" data-autorun="true" class="block hide-result"><pre class="source hljs php" contenteditable="true">PocketBook.Main.Languages[<span class="hljs-string">'blip'</span>] = {
+  name: <span class="hljs-string">"Blip"</span>,
+<span class="hljs-keyword">  eval</span>: evaluate <span class="hljs-comment">// This comes from the above script</span>
+}  </pre><div class="result" style="display: none;">[object Object]</div></div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs sql" contenteditable="true">Once this is run, we can <span class="hljs-keyword">use</span> a <span class="hljs-keyword">new</span> <span class="hljs-keyword">language</span> (selected <span class="hljs-keyword">at</span> the bottom <span class="hljs-keyword">of</span> the menu <span class="hljs-keyword">on</span> the <span class="hljs-keyword">left</span> <span class="hljs-keyword">to</span> run blocks <span class="hljs-keyword">of</span> code <span class="hljs-keyword">with</span>!)</pre><div class="result"><p>Once this is run, we can use a new language (selected at the bottom of the menu on the left to run blocks of code with!)</p></div></div><div data-lang="blip" data-source-visibility="visible" data-result-visibility="visible" data-autorun="false" class="block"><pre class="source hljs bash" contenteditable="true">(<span class="hljs-built_in">let</span> (x 2)
+  (+ (* x x) (+ (* 3 x) 4)))    </pre><div class="result">14</div></div><div data-lang="md" data-source-visibility="hidden" data-result-visibility="visible" data-autorun="false" class="block hide-source"><pre class="source hljs markdown" contenteditable="true">---
+<span class="hljs-code">      </span>
+<span class="hljs-code">      # FAQ</span>
+<span class="hljs-code">      </span>
+<span class="hljs-code">      **Where are things saved?**</span>
+<span class="hljs-code">      </span>
+<span class="hljs-code">      By default, things are saved to local storage in your browser. If you'd like something more permanent, you can save to a Github Gist (see the menu in the top left corner). You'll need to make a personal access token to do so.</span>
+<span class="hljs-code">      </span>
+<span class="hljs-code">      **Why not fork Jupyter/Iodide/ObservableHQ?**</span>
+<span class="hljs-code">      </span>
+<span class="hljs-code">      A few different reasons:</span>
+<span class="hljs-code">      - ObservableHQ isn't open source, as far as I can tell.</span>
+<span class="hljs-code">      - I didn't to run servers (a la Jupyter): browsers are powerful these days! [https://pocketbook.software](https://pocketbook.software) is literally just an HTML page in an AWS S3 bucket (behind CloudFront for HTTPS).</span>
+<span class="hljs-code">      - I wanted something tiny that made minimal assumptions about the front-end framework or transpiler de jour so that it had staying power.</span>
+<span class="hljs-code">      </span>
+<span class="hljs-code">      **Can I add X feature?**</span>
+<span class="hljs-code">      </span>
+<span class="hljs-code">      My first suggestion would be to try to add it inline: all of the PocketBook state is available for you to modify and the code should be pretty readable. If that doesn't work, send me a pull request! If it's good, I'll merge it.</span>
+<span class="hljs-code">      </span>
+If it's helpful, I wrote a little function that should dump out the latest layout of the global <span class="hljs-code">`PocketBook`</span> object. <span class="hljs-code">`PocketBook.Main`</span> refers to the main instance.</pre><div class="result"><hr>
+<h1 id="faq">FAQ</h1>
+<p><strong>Where are things saved?</strong></p>
+<p>By default, things are saved to local storage in your browser. If you'd like something more permanent, you can save to a Github Gist (see the menu in the top left corner). You'll need to make a personal access token to do so.</p>
+<p><strong>Why not fork Jupyter/Iodide/ObservableHQ?</strong></p>
+<p>A few different reasons:</p>
+<ul>
+<li>ObservableHQ isn't open source, as far as I can tell.</li>
+<li>I didn't to run servers (a la Jupyter): browsers are powerful these days! <a href="https://pocketbook.software">https://pocketbook.software</a> is literally just an HTML page in an AWS S3 bucket (behind CloudFront for HTTPS).</li>
+<li>I wanted something tiny that made minimal assumptions about the front-end framework or transpiler de jour so that it had staying power.</li>
+</ul>
+<p><strong>Can I add X feature?</strong></p>
+<p>My first suggestion would be to try to add it inline: all of the PocketBook state is available for you to modify and the code should be pretty readable. If that doesn't work, send me a pull request! If it's good, I'll merge it.</p>
+<p>If it's helpful, I wrote a little function that should dump out the latest layout of the global <code>PocketBook</code> object. <code>PocketBook.Main</code> refers to the main instance.</p></div></div><div data-lang="js" data-source-visibility="visible" data-result-visibility="visible" data-autorun="false" class="block"><pre class="source hljs css" contenteditable="true"><span class="hljs-selector-tag">PocketBook</span><span class="hljs-selector-class">.Help</span>()</pre><div class="result"><pre>Storage [Object]
+    LocalStorageBackingStore [Class]
+    GistBackingStore [Class]
+StorageManager [Class]
+UI [Object]
+    StatelessBlockAction [Class]
+    ToggleBlockAction [Class]
+    BlockController [Class]
+    StatelessGlobalAction [Class]
+    TopBarController [Class]
+HotKeyManager [Class]
+Main [PocketBook]
+    Version [Array]
+    Content [HTMLDivElement]
+    Languages [Object]
+    BlockController [BlockController]
+        Parent [PocketBook]
+        Actions [Array]
+        LastBlock [HTMLDivElement]
+    TopBarController [TopBarController]
+        Parent [PocketBook]
+        Actions [Array]
+    StorageManager [StorageManager]
+        Parent [PocketBook]
+        Source [GistBackingStore]
+            Id [String]
+    HotKeyManager [HotKeyManager]
+        Parent [PocketBook]
+Help [Function]
+</pre></div></div>
 </div>
 <div id="credits">
   Made with PocketBook.
