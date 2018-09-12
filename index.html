@@ -104,7 +104,7 @@ body {
 }
 
 #topbar {
-  border-bottom: 1px solid #dedede;
+  //border-bottom: 1px solid #dedede;
   padding: 10px;
   height: 40px;
   line-height: 40px;
@@ -203,42 +203,68 @@ input[type="checkbox"]:checked + label::after  {
 
 #status {
   font-family: system-ui;
+  float: left;
+  margin-left: 10px;
+  color: #ccc;
+}
+
+#hamburger {
+  float: left;
+}
+
+#hamburger div {
+    width: 35px;
+    height: 5px;
+    background-color: #ccc;
+    margin: 6px 0;
+}
+
+#topmenu {
+  width: 200px;
+  background-color: #333;
+  display: none;
+  position: fixed;
+  top: 48px;
+  left: 10px;
+}
+
+#hamburger:hover ~ #topmenu {
+  display: block;
+}
+
+#topmenu:hover {
+  display: block;
+}
+
+#topmenu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: #ccc;
+  border-bottom: 1px solid #444;
+  font-size: 16px;
+  font-family: system-ui;
+  padding: 10px;
+  margin: 0px;
+  box-sizing: border-box;
+  cursor: pointer;
+  border-radius: 0px;
 }
 
 </style>
 </head>
 <body class="medium-style">
 <div id="topbar">
-  <span id="status">Up to Date</span>
-  &nbsp;
-  &nbsp;
-  <span id="source"></span>
-  &nbsp;
-  &nbsp;
-  <button id="saveToGithubButton" onclick="saveToGithub()">Save to Github Gist</button>
-  <!-- &nbsp;
-  <button id="saveToDownloadsButton" onclick="saveToDownloads()">Save to Downloads</button> -->
-  &nbsp;
-  <button id="revertButton" onclick="revert()">Revert to File</button>
+  <div id="hamburger">
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+  <div id="status">Up to Date</div>
+  <div id="topmenu"></div>
 </div>
-<div id="controls">
-    <button onclick="run()">Run</button>
-    <button onclick="addAbove()">Add Above</button>
-    <button onclick="addBelow()">Add Below</button>
-    <button onclick="remove()">Remove</button>
-    <div class="control"><input id="source-visibility" onclick="chooseSourceVisibility(event)" type="checkbox" /><label for="source-visibility">Show Source </label></div>
-    <div class="control"><input id="result-visibility" onclick="chooseResultVisibility(event)" type="checkbox" /><label for="result-visibility">Show Result </label></div>
-    <div class="control"><input id="autorun" onclick="chooseAutorun(event)" type="checkbox" /><label for="autorun">Autorun </label></div>
-    <div style="position: relative;">
-      <div class="divot">&#x25BC;</div>
-      <select onchange="chooseLanguage(event)" id="activelang">
-        <option value="md">Markdown</option>
-        <option value="js">Javascript</option>
-        <option value="deps">Deps</option>
-      </select>
-    </div>
-</div>
-<div id="notebook1" class="content">
+<div id="controls"></div>
+<div class="content">
   <div class="metadata" style="display: none;"></div>
   <div data-lang="md" data-visibility="output" data-autorun="false" class="block focused">
     <pre class="source" contenteditable="true">
@@ -323,6 +349,8 @@ bar = {
       };
 
       this.BlockController = new PocketBook.UI.BlockController(this);
+      this.TopBarController = new PocketBook.UI.TopBarController(this);
+      this.TopBarController.refresh();
       // StorageManager initializes this when ready
 
       this.StorageManager = new PocketBook.StorageManager(this);
@@ -341,6 +369,9 @@ bar = {
     load(cb) {
       cb(window.localStorage.getItem(this.Id));
     }
+    status() {
+      return "Up to Date";
+    }
     autosave(content) {
       window.localStorage.setItem(this.Id, content.innerHTML);
     }
@@ -352,14 +383,24 @@ bar = {
     constructor(id) {
       this.Id = id
       this.Loaded = false;
+      this.LastRevision = null;
+      this.TemporaryStatus = null;
     }
     load(cb) {
+      var pendingRevision = window.localStorage.getItem("pending-" + this.Id);
+      if (pendingRevision) {
+        cb(pendingRevision);
+        return;
+      }
+
       var xhttp = new XMLHttpRequest();
-      xhttp.open('GET', 'https://api.github.com/gists/' + gistid + "?seed=" + Math.random())
-      xhttp.addEventListener('load', function (e) {
+      xhttp.open('GET', 'https://api.github.com/gists/' + this.Id + "?seed=" + Math.random())
+      xhttp.addEventListener('load', (e) => {
         if (xhttp.readyState == 4 && xhttp.status == 200) {
           var index = JSON.parse(xhttp.response)["files"]["index.html"];
           if (index["truncated"] === false) {
+            this.LastRevision = index["content"];
+            this.TemporaryStatus = null;
             cb(index["content"]);
           } else {
             alert("Truncated gists not yet supported");
@@ -367,6 +408,14 @@ bar = {
         }
       });
       xhttp.send();
+      this.TemporaryStatus = "Loading existing gist";
+    }
+    status() {
+      if (this.TemporaryStatus) return this.TemporaryStatus;
+      if (window.localStorage.getItem("pending-" + this.Id)) {
+        return "Autosaved, pending changes";
+      }
+      return "Up to Date";
     }
     save(content, cb) {
       if (!window.localStorage.getItem('githubkey')) {
@@ -383,20 +432,24 @@ bar = {
         var toPatch = {
           "files": {
             "index.html": {
-              "content": content
+              "content": content.innerHTML
             }
           }
         };
         var xhttp = new XMLHttpRequest();
         xhttp.open('PATCH', 'https://api.github.com/gists/' + this.Id + '?access_token=' + key)
         xhttp.setRequestHeader('Content-Type', 'application/json');
-        xhttp.addEventListener('load', function (e) {
+        xhttp.addEventListener('load', (e) => {
           if (xhttp.readyState == 4 && xhttp.status == 200) {
             document.getElementById('status').innerHTML = 'Saved to Github Gist'
-            cb(this.Id);
+            window.localStorage.removeItem("pending-" + this.Id)
+            this.LastRevision = content.innerHTML;
+            this.TemporaryStatus = null;
+            if (cb) cb(this.Id);
           }
         });
         xhttp.send(JSON.stringify(toPatch));
+        this.TemporaryStatus = "Saving to existing gist";
       } else {
         var toPost = {
           "description": "Hello World Examples",
@@ -413,20 +466,44 @@ bar = {
         var xhttp = new XMLHttpRequest();
         xhttp.open('POST', 'https://api.github.com/gists?access_token=' + key)
         xhttp.setRequestHeader('Content-Type', 'application/json');
-        xhttp.addEventListener('load', function (e) {
+        xhttp.addEventListener('load', (e) => {
           if (xhttp.readyState == 4) {
             var response = JSON.parse(xhttp.response);
             if (response.id) {
               this.Id = response.id;
-              cb(this.Id)
+              var metadata = content.getElementsByClassName('metadata')[0];
+              metadata.dataset.gist = this.Id;
+              window.localStorage.removeItem("pending-" + this.Id)
+              this.LastRevision = content.innerHTML;
+
+              // This assumes implementation details about the LocalStore, so TODO: use the other store to do this;
+              window.localStorage.setItem(metadata.localId || "default", content.innerHTML);
+
+              this.TemporaryStatus = null;
+              if (cb) cb(this.Id)
             }
           }
         });
         xhttp.send(JSON.stringify(toPost));
+        this.TemporaryStatus = "Creating new gist";
       }
     }
     autosave(content) {
-
+      // This is kind of wonky because focus changes the content's HTML (it adds a class)
+      // TODO: denote focus via other means (nth-child selector?)
+      if (this.LastRevision && content.innerHTML != this.LastRevision) {
+        if (content.getElementsByClassName('focused').length > 0) {
+          this.TemporaryStatus = "Waiting for break in editing to save";
+          return;
+        } else {
+          this.TemporaryStatus = null;
+        }
+        console.log(content.innerHTML.length, "vs", this.LastRevision.length)
+        window.localStorage.setItem("pending-" + this.Id, content.innerHTML)
+        this.LastRevision = content.innerHTML;
+      } else if (this.TemporaryStatus == "Waiting for break in editing to save") {
+        this.TemporaryStatus = null;
+      }
     }
   };
 
@@ -742,12 +819,52 @@ bar = {
           var autosave = () => {
             console.log("Autosaving")
             this.Parent.StorageManager.Source.autosave(this.Parent.Content);
+            document.getElementById('status').innerHTML = this.Parent.StorageManager.Source.status();
             setTimeout(autosave, 1000);
           }
           autosave();
         }
       };
       doBlock(toAutorun);
+    }
+  }
+
+  var StatelessGlobalAction = PocketBook.UI.StatelessGlobalAction = class StatelessGlobalAction {
+    constructor(name, hotkey, execute) {
+      this.name = name;
+      this.execute = execute;
+      this.hotkey = [hotkey, execute];
+    }
+    render() {
+      var button = document.createElement('button');
+      button.innerHTML = this.name;
+      button.addEventListener('click', this.execute);
+      return button;
+    }
+  }
+
+  PocketBook.UI.TopBarController = class TopBarController {
+    constructor(pocketbook) {
+      this.Parent = pocketbook;
+      this.Actions = [
+        new StatelessGlobalAction("Save to Github Gist", null, () => {
+          if (this.Parent.StorageManager.Source.constructor.name != "GistBackingStore") {
+            this.Parent.StorageManager.Source = new PocketBook.Storage.GistBackingStore();
+          }
+          this.Parent.StorageManager.Source.save(this.Parent.Content)
+        }),
+        new StatelessGlobalAction("Download Copy", null, function() {
+
+        })
+      ];
+    }
+    refresh() {
+      var controls = document.getElementById('topmenu');
+      controls.innerHTML = '';
+      for (var i = 0; i < this.Actions.length; i++) {
+        var action = this.Actions[i].render();
+        if (action) controls.appendChild(action);
+      }
     }
   }
 
@@ -802,7 +919,6 @@ bar = {
   // a la Golang) as well as their types.
   PocketBook.Help = function(obj, indent) {
     var toReturn = "";
-    var shouldLog = indent == undefined;
     obj = obj || PocketBook;
     indent = indent || "";
     for (var key in obj) {
@@ -820,11 +936,7 @@ bar = {
         }
       }
     }
-    if (shouldLog) {
-      console.log(toReturn);
-    } else {
-      return toReturn;
-    }
+    return toReturn;
   }
 
 })();
