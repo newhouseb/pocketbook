@@ -389,6 +389,9 @@ window.bar = {
     }
     // There's no distinction between autosave and save for localstorage
     save(content) { autosave(content) }
+    discardChanges() {
+      window.localStorage.removeItem(this.Id);
+    }
   };
   
   var GistBackingStore = PocketBook.Storage.GistBackingStore = class GistBackingStore {
@@ -431,6 +434,9 @@ window.bar = {
         return "Up to Date";
       })() + (this.Id ? " - <a href=\"https://gist.github.com/" + this.Id + "\">Source Gist</a>" : "");
     }
+    discardChanges() {
+      window.localStorage.removeItem("pending-" + this.Id);
+    }
     save(content, cb) {
       if (!window.localStorage.getItem('githubkey')) {
         var key = prompt("Please enter a github api key");
@@ -465,8 +471,9 @@ window.bar = {
         xhttp.send(JSON.stringify(toPatch));
         this.TemporaryStatus = "Saving to existing gist";
       } else {
+        var description = prompt("What should we call this gist?");
         var toPost = {
-          "description": "Hello World Examples",
+          "description": description || "A pocketbook",
           "public": true,
           "files": {
             "readme.md": {
@@ -873,6 +880,12 @@ window.bar = {
             this.Parent.StorageManager.Source = new PocketBook.Storage.GistBackingStore();
           }
           this.Parent.StorageManager.Source.save(this.Parent.Content)
+        }),
+        new StatelessBlockAction("Discard All Changes", null, () => {
+          // Removes basically everything except the github key
+          this.Parent.StorageManager.Source.discardChanges();
+          window.localStorage.removeItem("default");
+          location.reload();
         }),
         new StatelessGlobalAction("Download Copy", null, function() {
 
