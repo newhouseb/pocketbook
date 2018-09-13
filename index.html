@@ -638,6 +638,7 @@ Help [Function]
       this.Parent = pocketbook;
       this.Source = null;
       this._loaded = false;
+      this.Initialized = false;
     }
     // Check the redirect and the subdomains
     handleURL() {
@@ -682,6 +683,7 @@ Help [Function]
       store.load((content_) => {
         if (content_) this.Parent.Content.innerHTML = content_;
         if (shouldInitialize) {
+          this.Initialized = true;
           this.Parent.BlockController.initialize();
         }
       });
@@ -951,8 +953,10 @@ Help [Function]
           // If nothing else left to run, kick off autosaving
           var autosave = () => {
             console.log("Autosaving")
-            this.Parent.StorageManager.Source.autosave(this.Parent.Content);
-            document.getElementById('status').innerHTML = this.Parent.StorageManager.Source.status();
+            if (this.Parent.StorageManager.Initialized) {
+              this.Parent.StorageManager.Source.autosave(this.Parent.Content);
+              document.getElementById('status').innerHTML = this.Parent.StorageManager.Source.status();
+            }
             setTimeout(autosave, 1000);
           }
           autosave();
